@@ -1,12 +1,16 @@
-import pkg from "pg";
-const { Pool } = pkg;
+import mysql from "mysql2/promise";
+import dotenv from "dotenv";
 
-const pool = new Pool({
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD || "1234",
+dotenv.config();
+
+const pool = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || "DocumentDB"
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "1234",
+  database: process.env.DB_NAME || "FileHubDB",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 });
 
 export default pool;

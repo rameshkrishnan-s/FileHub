@@ -1,16 +1,21 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import authRoutes from "../routes/auth.js"; 
+import authRoutes from "./routes/auth.js"; 
 
-app.use("/auth", authRoutes);
+
 
 
 
 dotenv.config();
 const app = express();
 
-app.use(cors());
+// app.use(cors());
+
+app.use(cors({
+  origin: "http://localhost:5173", // or your frontend URL/port
+  credentials: true,
+}));
 app.use(express.json());
 app.use("/auth", authRoutes);
 
