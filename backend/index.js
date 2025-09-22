@@ -1,7 +1,8 @@
+import "./src/db/init.js";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import authRoutes from "./routes/auth.js"; 
+import authRoutes from "./src/routes/auth.js"; 
 
 
 
