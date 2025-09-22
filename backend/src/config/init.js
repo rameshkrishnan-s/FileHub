@@ -1,5 +1,6 @@
-import pool from "./db.js";
-import bcrypt from "bcrypt";
+// initDatabase.js
+const pool = require("../db/db");
+const bcrypt = require("bcrypt");
 
 async function initDatabase() {
   const connection = await pool.getConnection();
@@ -73,3 +74,5 @@ async function createUsers(connection) {
 
 // Run everything
 initDatabase();
+
+module.exports = { initDatabase };
