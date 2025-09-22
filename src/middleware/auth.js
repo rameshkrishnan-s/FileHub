@@ -1,5 +1,5 @@
-import jwt from "jsonwebtoken";
-import express from "express";
+const jwt = require("jsonwebtoken");
+const express = require("express");
 
 const router = express.Router();
 
@@ -25,4 +25,4 @@ router.post("/login", (req, res) => {
   res.json({ token, role, name: email.split("@")[0] });
 });
 
-export default router;
+module.exports = router;
