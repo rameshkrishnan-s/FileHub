@@ -1,4 +1,3 @@
-// initTables.js
 const mysql = require("mysql2/promise");
 require("dotenv").config();
 
@@ -30,6 +29,20 @@ async function initTables() {
         id INT AUTO_INCREMENT PRIMARY KEY,
         code VARCHAR(50) UNIQUE NOT NULL,
         name VARCHAR(100) NOT NULL
+      )
+    `);
+
+    // ✅ Create metadata table
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS metadata (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        fileName VARCHAR(255) NOT NULL,
+        filePath VARCHAR(255) NOT NULL,
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        type ENUM('file','folder') DEFAULT 'file',
+        fileId INT,
+        INDEX(fileId)
       )
     `);
 
