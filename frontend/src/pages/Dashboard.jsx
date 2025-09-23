@@ -52,15 +52,21 @@ export default function Dashboard({ authToken, setPage }) {
     setAssemblyCodeFilter("");
   }, [currentPath]);
 
+  // const logout = () => {
+  //   localStorage.removeItem("authToken");
+  //   localStorage.removeItem("currentPath");
+  //   setCurrentPath("");
+  //   setPage("login");
+  // };
 
-const logout = () => {
-  sessionStorage.removeItem("authToken");
-  localStorage.removeItem("authToken");
-  localStorage.removeItem("currentPath");
-  setCurrentPath("");
-  setPage("login");
-  navigate("/");   // or navigate("/login") depending on your routes
-};
+  
+  const navigate = useNavigate();
+  const logout = () => {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("currentPath");
+    setCurrentPath(""); 
+    navigate("/"); // redirect to login
+  };
 
   const fetchFiles = async () => {
     try {
@@ -308,7 +314,7 @@ const logout = () => {
     pathArray.pop();
     setCurrentPath(pathArray.join("/"));
   };
-  const navigate = useNavigate();
+
 
   const goToAdminPage = () => {
   navigate("/admin-page");

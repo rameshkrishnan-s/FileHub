@@ -1,4 +1,6 @@
+// initDatabase.js
 const mysql = require("mysql2/promise");
+const bcrypt = require("bcrypt");
 require("dotenv").config();
 
 const pool = mysql.createPool({
@@ -12,10 +14,35 @@ const pool = mysql.createPool({
 });
 
 async function initTables() {
-  const conn = await pool.getConnection();
+  const connection = await pool.getConnection();
   try {
-    // Create companies table
-    await conn.execute(`
+    // ================= ROLES TABLE =================
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS roles (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(50) NOT NULL UNIQUE
+      )
+    `);
+
+    await connection.execute(`
+      INSERT IGNORE INTO roles (name) VALUES 
+      ('Admin'), ('Developer'), ('Viewer')
+    `);
+
+    // ================= USERS TABLE =================
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        role_id INT NOT NULL,
+        FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+      )
+    `);
+
+    // ================= COMPANIES TABLE =================
+    await connection.execute(`
       CREATE TABLE IF NOT EXISTS companies (
         id INT AUTO_INCREMENT PRIMARY KEY,
         code VARCHAR(50) UNIQUE NOT NULL,
@@ -23,8 +50,8 @@ async function initTables() {
       )
     `);
 
-    // Create assemblies table
-    await conn.execute(`
+    // ================= ASSEMBLIES TABLE =================
+    await connection.execute(`
       CREATE TABLE IF NOT EXISTS assemblies (
         id INT AUTO_INCREMENT PRIMARY KEY,
         code VARCHAR(50) UNIQUE NOT NULL,
@@ -32,8 +59,8 @@ async function initTables() {
       )
     `);
 
-    // ✅ Create metadata table
-    await conn.execute(`
+    // ================= METADATA TABLE =================
+    await connection.execute(`
       CREATE TABLE IF NOT EXISTS metadata (
         id INT AUTO_INCREMENT PRIMARY KEY,
         fileName VARCHAR(255) NOT NULL,
@@ -46,11 +73,41 @@ async function initTables() {
       )
     `);
 
-    console.log("Tables initialized successfully!");
+    console.log("✅ All tables initialized successfully!");
+
+    // Create default users
+    await createUsers(connection);
+
   } catch (err) {
-    console.error("Error initializing tables:", err);
+    console.error("❌ Error initializing database:", err);
   } finally {
-    conn.release();
+    connection.release();
+  }
+}
+
+async function createUsers(connection) {
+  try {
+    const adminPass = await bcrypt.hash("admin123", 10);
+    await connection.execute(
+      "INSERT IGNORE INTO users (name, email, password, role_id) VALUES (?, ?, ?, ?)",
+      ["Admin", "admin@example.com", adminPass, 1]
+    );
+
+    const devPass = await bcrypt.hash("user123", 10);
+    await connection.execute(
+      "INSERT IGNORE INTO users (name, email, password, role_id) VALUES (?, ?, ?, ?)",
+      ["Developer", "user@example.com", devPass, 2]
+    );
+
+    const viewerPass = await bcrypt.hash("viewer123", 10);
+    await connection.execute(
+      "INSERT IGNORE INTO users (name, email, password, role_id) VALUES (?, ?, ?, ?)",
+      ["Viewer", "viewer@example.com", viewerPass, 3]
+    );
+
+    console.log("✅ Default users created!");
+  } catch (err) {
+    console.error("❌ Error creating users:", err);
   }
 }
 
@@ -59,5 +116,5 @@ if (require.main === module) {
   initTables().then(() => process.exit(0));
 }
 
-// Export the function to use in other files
+// Export for usage in app
 module.exports = { initTables };
