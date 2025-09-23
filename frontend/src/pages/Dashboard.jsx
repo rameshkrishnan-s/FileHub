@@ -52,11 +52,20 @@ export default function Dashboard({ authToken, setPage }) {
     setAssemblyCodeFilter("");
   }, [currentPath]);
 
+  // const logout = () => {
+  //   localStorage.removeItem("authToken");
+  //   localStorage.removeItem("currentPath");
+  //   setCurrentPath("");
+  //   setPage("login");
+  // };
+
+  
+  const navigate = useNavigate();
   const logout = () => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("currentPath");
-    setCurrentPath("");
-    setPage("login");
+    setCurrentPath(""); 
+    navigate("/"); // redirect to login
   };
 
   const fetchFiles = async () => {
@@ -305,7 +314,7 @@ export default function Dashboard({ authToken, setPage }) {
     pathArray.pop();
     setCurrentPath(pathArray.join("/"));
   };
-  const navigate = useNavigate();
+
 
   const goToAdminPage = () => {
   navigate("/admin-page");

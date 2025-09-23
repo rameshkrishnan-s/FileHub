@@ -1,11 +1,22 @@
 // initDatabase.js
-const pool = require("../db/db");
+const mysql = require("mysql2/promise");
 const bcrypt = require("bcrypt");
+require("dotenv").config();
+
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
 
 async function initDatabase() {
   const connection = await pool.getConnection();
   try {
-    // Create roles table
+    // ================= ROLES TABLE =================
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS roles (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -13,13 +24,12 @@ async function initDatabase() {
       )
     `);
 
-    // Insert default roles (Admin, Developer, Viewer)
     await connection.execute(`
       INSERT IGNORE INTO roles (name) VALUES 
       ('Admin'), ('Developer'), ('Viewer')
     `);
 
-    // Create users table
+    // ================= USERS TABLE =================
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -31,13 +41,45 @@ async function initDatabase() {
       )
     `);
 
-    console.log("Database initialized ✅");
+    // ================= COMPANIES TABLE =================
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS companies (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        name VARCHAR(100) NOT NULL
+      )
+    `);
 
-    // Now create default users
+    // ================= ASSEMBLIES TABLE =================
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS assemblies (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        name VARCHAR(100) NOT NULL
+      )
+    `);
+
+    // ================= METADATA TABLE =================
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS metadata (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        fileName VARCHAR(255) NOT NULL,
+        filePath VARCHAR(255) NOT NULL,
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        type ENUM('file','folder') DEFAULT 'file',
+        fileId INT,
+        INDEX(fileId)
+      )
+    `);
+
+    console.log("✅ All tables initialized successfully!");
+
+    // Create default users
     await createUsers(connection);
 
   } catch (err) {
-    console.error("Error initializing database:", err);
+    console.error("❌ Error initializing database:", err);
   } finally {
     connection.release();
   }
@@ -45,34 +87,34 @@ async function initDatabase() {
 
 async function createUsers(connection) {
   try {
-    // Admin
     const adminPass = await bcrypt.hash("admin123", 10);
     await connection.execute(
       "INSERT IGNORE INTO users (name, email, password, role_id) VALUES (?, ?, ?, ?)",
       ["Admin", "admin@example.com", adminPass, 1]
     );
 
-    // Developer
-    const userPass = await bcrypt.hash("user123", 10);
+    const devPass = await bcrypt.hash("user123", 10);
     await connection.execute(
       "INSERT IGNORE INTO users (name, email, password, role_id) VALUES (?, ?, ?, ?)",
-      ["Developer", "user@example.com", userPass, 2]
+      ["Developer", "user@example.com", devPass, 2]
     );
 
-    // Viewer
     const viewerPass = await bcrypt.hash("viewer123", 10);
     await connection.execute(
       "INSERT IGNORE INTO users (name, email, password, role_id) VALUES (?, ?, ?, ?)",
       ["Viewer", "viewer@example.com", viewerPass, 3]
     );
 
-    console.log("Users created ✅");
+    console.log("✅ Default users created!");
   } catch (err) {
-    console.error("Error creating users:", err);
+    console.error("❌ Error creating users:", err);
   }
 }
 
-// Run everything
-initDatabase();
+// Run immediately if this file is executed directly
+if (require.main === module) {
+  initDatabase().then(() => process.exit(0));
+}
 
+// Export for usage in app
 module.exports = { initDatabase };

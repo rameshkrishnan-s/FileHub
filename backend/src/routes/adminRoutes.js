@@ -148,6 +148,19 @@ router.post("/delete-assembly", async (req, res) => {
   }
 });
 
+// Get all assembly codes
+router.get("/assembly-codes", async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const [assemblies] = await conn.execute("SELECT code, name FROM assemblies");
+    res.json({ total: assemblies.length, codes: assemblies });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching assembly codes.", error: err.toString() });
+  } finally {
+    conn.release();
+  }
+});
+
 // ------------------ METADATA ------------------ //
 
 router.get("/get-metadata", async (req, res) => {
