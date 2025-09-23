@@ -12,13 +12,15 @@ export default function Login() {
     e.preventDefault();
     try {
       const res = await API.post("/api/auth/login", { email, password });
+
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("role", res.data.role);
       localStorage.setItem("name", res.data.name);
 
-      if (res.data.role === 1) navigate("/admin");
+      // Navigate based on role
+      if (res.data.role === 1) navigate("/admin"); // AdminPage
       else if (res.data.role === 2) navigate("/user");
-      else navigate("/viewer");
+      else if (res.data.role === 3) navigate("/viewer");
     } catch (err) {
       setError(err.response?.data?.error || "Login failed");
     }
