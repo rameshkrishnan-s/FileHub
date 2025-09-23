@@ -52,12 +52,15 @@ export default function Dashboard({ authToken, setPage }) {
     setAssemblyCodeFilter("");
   }, [currentPath]);
 
-  const logout = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("currentPath");
-    setCurrentPath("");
-    setPage("login");
-  };
+
+const logout = () => {
+  sessionStorage.removeItem("authToken");
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("currentPath");
+  setCurrentPath("");
+  setPage("login");
+  navigate("/");   // or navigate("/login") depending on your routes
+};
 
   const fetchFiles = async () => {
     try {
