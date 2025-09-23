@@ -19,7 +19,7 @@ const FileGrid = ({
   }
 
   return (
-    <>
+    <div className="grid grid-cols-4 gap-6">
       {items.map((item) => (
         <div
           key={isSearchResults ? item.path : item.name}
@@ -65,8 +65,8 @@ const FileGrid = ({
           </div>
         </div>
       ))}
-    </>
+    </div>
   );
 };
 
-export default FileGrid; 
+export default FileGrid;
