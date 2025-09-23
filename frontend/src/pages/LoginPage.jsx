@@ -1,40 +1,38 @@
 import React, { useState } from "react";
-import { Eye, EyeOff, Loader2 } from "lucide-react"; // Requires lucide-react package
+import { Eye, EyeOff, Loader2 } from "lucide-react"; 
+import { useNavigate } from "react-router-dom";
+import API from "../services/api.js";
 import logo from "../assets/logo.png";
 import certs from "../assets/iso-certify-trans.png";
 
-export default function LoginPage({ setPage, setAuthToken }) {
-  const [username, setUsername] = useState("");
+export default function Login() {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogin = async () => {
     if (loading) return;
-    if (!username || !password) {
-      setError("Please enter both username and password.");
+    if (!email || !password) {
+      setError("Please enter both email and password.");
       return;
     }
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password: password.trim() }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setAuthToken(data.token);
-        sessionStorage.setItem("authToken", data.token);
-        setPage("dashboard");
-      } else {
-        setError(data.message || "Invalid credentials");
-      }
+      const res = await API.post("/api/auth/login", { email, password });
+
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("role", res.data.role);
+      localStorage.setItem("name", res.data.name);
+
+      if (res.data.role === 1) navigate("/admin");
+      else if (res.data.role === 2) navigate("/user");
+      else if (res.data.role === 3) navigate("/viewer");
     } catch (err) {
-      console.error(err);
-      setError("Unable to connect to server. Please try again later.");
+      setError(err.response?.data?.error || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -62,20 +60,20 @@ export default function LoginPage({ setPage, setAuthToken }) {
           {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
           <div className="mb-4">
-            <label htmlFor="username" className="block text-sm font-medium text-gray-600 mb-1">
-              Username
+            <label htmlFor="email" className="block text-sm font-medium text-gray-600 mb-1">
+              Email
             </label>
             <input
-              id="username"
-              type="text"
-              value={username}
+              id="email"
+              type="email"
+              value={email}
               onChange={(e) => {
-                setUsername(e.target.value);
+                setEmail(e.target.value);
                 setError("");
               }}
               onKeyDown={handleKeyDown}
               className="w-full p-3 border border-gray-300 rounded-lg focus:border-blue-600 focus:ring-blue-500 outline-none transition-all"
-              placeholder="Enter your username"
+              placeholder="Enter your email"
             />
           </div>
 
