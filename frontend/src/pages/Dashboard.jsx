@@ -6,6 +6,8 @@ import SearchAndFilters from "../components/dashboard/SearchAndFilters.jsx";
 import FileGrid from "../components/dashboard/FileGrid.jsx";
 import Breadcrumb from "../components/dashboard/Breadcrumb.jsx";
 import ActionButtons from "../components/dashboard/ActionButtons.jsx";
+import { useNavigate } from 'react-router-dom';
+
 
 export default function Dashboard({ authToken, setPage }) {
   const [files, setFiles] = useState([]);
@@ -303,10 +305,11 @@ export default function Dashboard({ authToken, setPage }) {
     pathArray.pop();
     setCurrentPath(pathArray.join("/"));
   };
+  const navigate = useNavigate();
 
   const goToAdminPage = () => {
-    setPage("admin");
-  };
+  navigate("/admin-page");
+};
 
   const navigateToPathSegment = (index) => {
     const pathArray = currentPath.split("/").filter(Boolean);

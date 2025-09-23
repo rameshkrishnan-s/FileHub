@@ -4,6 +4,7 @@ import Login from "./pages/Login.jsx";
 import AdminDashboard from "./pages/Dashboard.jsx";
 import UserDashboard from "./pages/UserDashboard.jsx";
 import ViewerDashboard from "./pages/ViewerDashboard.jsx";
+import AdminPage from "./pages/AdminPage.jsx";
 
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/user" element={<UserDashboard />} />
         <Route path="/viewer" element={<ViewerDashboard />} />
+        <Route path="/admin-page" element={<AdminPage />} />
       </Routes>
     </Router>
   );

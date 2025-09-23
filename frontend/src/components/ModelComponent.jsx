@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 
-const FolderCreationModal = ({ isOpen, onClose, onCreate }) => {
+const FolderCreationModal = ({ isOpen, onClose, currentPath = "" }) => {
   const [customName, setCustomName] = useState("");
   const [companyCode, setCompanyCode] = useState("");
   const [year, setYear] = useState("");
   const [assemblyCode, setAssemblyCode] = useState("");
+  const [subFolderCount, setSubFolderCount] = useState(0);
   const [companies, setCompanies] = useState([]);
   const [assemblyCodes, setAssemblyCodes] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -33,16 +35,38 @@ const FolderCreationModal = ({ isOpen, onClose, onCreate }) => {
     fetchAssemblyCodes();
   }, []);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const parts = [customName, year, companyCode, assemblyCode].filter(Boolean);
     const finalFolderName = parts.join("-") || "Untitled-Folder";
 
-    onCreate(finalFolderName);
-    setCustomName("");
-    setCompanyCode("");
-    setYear("");
-    setAssemblyCode("");
-    onClose();
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/folder/create-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          folderName: finalFolderName,
+          path: currentPath,
+          subFolderCount: Number(subFolderCount) || 0
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create folder");
+      }
+
+      // reset after success
+      setCustomName("");
+      setCompanyCode("");
+      setYear("");
+      setAssemblyCode("");
+      setSubFolderCount(0);
+      onClose();
+    } catch (err) {
+      console.error("Error creating folder:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -92,7 +116,7 @@ const FolderCreationModal = ({ isOpen, onClose, onCreate }) => {
         <select
           value={assemblyCode}
           onChange={(e) => setAssemblyCode(e.target.value)}
-          className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+          className="w-full p-3 mb-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
         >
           <option value="">Select Assembly Code</option>
           {assemblyCodes.map((assembly) => (
@@ -101,6 +125,15 @@ const FolderCreationModal = ({ isOpen, onClose, onCreate }) => {
             </option>
           ))}
         </select>
+
+        <input
+          type="number"
+          min="0"
+          placeholder="Number of Subfolders"
+          value={subFolderCount}
+          onChange={(e) => setSubFolderCount(e.target.value)}
+          className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+        />
 
         <div className="flex justify-end gap-2">
           <button
@@ -111,9 +144,10 @@ const FolderCreationModal = ({ isOpen, onClose, onCreate }) => {
           </button>
           <button
             onClick={handleCreate}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all"
+            disabled={loading}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50"
           >
-            Create
+            {loading ? "Creating..." : "Create"}
           </button>
         </div>
       </div>
