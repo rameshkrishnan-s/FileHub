@@ -5,7 +5,6 @@ import AdminDashboard from "./pages/Dashboard.jsx";
 import UserDashboard from "./pages/UserDashboard.jsx";
 import ViewerDashboard from "./pages/ViewerDashboard.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
-import Login from "./pages/LoginPage.jsx";
 
 
 function App() {

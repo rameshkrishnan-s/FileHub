@@ -52,13 +52,6 @@ export default function Dashboard({ authToken, setPage }) {
     setAssemblyCodeFilter("");
   }, [currentPath]);
 
-  // const logout = () => {
-  //   localStorage.removeItem("authToken");
-  //   localStorage.removeItem("currentPath");
-  //   setCurrentPath("");
-  //   setPage("login");
-  // };
-
   
   const navigate = useNavigate();
   const logout = () => {
@@ -68,23 +61,24 @@ export default function Dashboard({ authToken, setPage }) {
     navigate("/"); // redirect to login
   };
 
-  const fetchFiles = async () => {
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/folder/list?path=${encodeURIComponent(
-          currentPath
-        )}`
-      );
-      const data = await response.json();
-      if (response.ok) {
-        setFiles(data);
-      } else {
-        setError("Failed to load files.");
-      }
-    } catch (err) {
-      setError("Error fetching files.");
+ const fetchFiles = async () => {
+  try {
+    const response = await fetch(
+      `http://localhost:5000/api/folder/list?path=${encodeURIComponent(currentPath)}`
+    );
+    const data = await response.json();
+    if (response.ok) {
+      // Sort by createdAt descending (newest first)
+      const sortedFiles = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setFiles(sortedFiles);
+    } else {
+      setError("Failed to load files.");
     }
-  };
+  } catch (err) {
+    setError("Error fetching files.");
+  }
+};
+
 
   const fetchCompanies = async () => {
     try {

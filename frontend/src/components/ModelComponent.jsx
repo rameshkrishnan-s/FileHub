@@ -55,7 +55,7 @@ const FolderCreationModal = ({ isOpen, onClose, currentPath = "" }) => {
         throw new Error("Failed to create folder");
       }
 
-      // reset after success
+      // Reset form after success
       setCustomName("");
       setCompanyCode("");
       setYear("");
@@ -75,8 +75,9 @@ const FolderCreationModal = ({ isOpen, onClose, currentPath = "" }) => {
   const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-30">
-      <div className="bg-white p-6 rounded-lg max-w-sm w-full">
+    // Lighter overlay instead of black
+    <div className="fixed inset-0 bg-gray-200 bg-opacity-50 flex justify-center items-center z-50">
+      <div className="bg-white p-6 rounded-lg max-w-sm w-full shadow-lg">
         <h3 className="text-lg font-bold mb-4">Create New Folder</h3>
 
         <input
