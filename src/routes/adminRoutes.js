@@ -176,59 +176,5 @@ router.get("/get-metadata", async (req, res) => {
   }
 });
 
-// ------------------ USER ROUTES ------------------ //
-
-// Add user
-router.post("/add-user", async (req, res) => {
-  const { name, email, password, role_id, position } = req.body;
-
-  if (!name || !email || !password || !role_id) {
-    return res.status(400).json({ message: "Name, email, password, and role are required!" });
-  }
-
-  const conn = await pool.getConnection();
-  try {
-    // Check if email already exists
-    const [existing] = await conn.execute("SELECT * FROM users WHERE email = ?", [email]);
-    if (existing.length > 0) {
-      return res.status(400).json({ message: "User with this email already exists!" });
-    }
-
-    // Hash password
-    const bcrypt = require("bcrypt");
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Insert new user
-    await conn.execute(
-      "INSERT INTO users (name, email, password, role_id, position) VALUES (?, ?, ?, ?, ?)",
-      [name, email, hashedPassword, role_id, position || null]
-    );
-
-    res.json({ message: "User created successfully!" });
-  } catch (err) {
-    res.status(500).json({ message: "Error creating user.", error: err.toString() });
-  } finally {
-    conn.release();
-  }
-});
-
-// Get all users
-router.get("/users", async (req, res) => {
-  const conn = await pool.getConnection();
-  try {
-    const [users] = await conn.execute(
-      `SELECT u.id, u.name, u.email, u.position, r.name AS role
-       FROM users u
-       JOIN roles r ON u.role_id = r.id`
-    );
-    res.json({ total: users.length, users });
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching users.", error: err.toString() });
-  } finally {
-    conn.release();
-  }
-});
-
-
 // Export CommonJS
 module.exports = router;
