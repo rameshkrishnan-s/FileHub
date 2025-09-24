@@ -14,8 +14,9 @@ const storage = multer.diskStorage({
     if (!year || !companyCode || !assemblyCode || !extraCode) {
       return cb(new Error('Missing required metadata (year, companyCode, assemblyCode, extraCode)'));
     }
+    const basePath = process.env.STORAGE_PATH || "D:/upload";  
 
-    const uploadPath = path.join(__dirname, `../uploads/${year}/${companyCode}/${assemblyCode}/${extraCode}`);
+    const uploadPath = path.join(basePath,` ${year}/${companyCode}/${assemblyCode}/${extraCode}`);
     fs.mkdirSync(uploadPath, { recursive: true }); // Create directories if not exist
     cb(null, uploadPath);
   },
