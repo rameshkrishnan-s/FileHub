@@ -1,286 +1,103 @@
-import React, { useState, useEffect } from "react";
-import { Trash2, PlusCircle, Pencil } from "lucide-react";
+import React, { useState } from "react";
+import { Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/header";
+import Codes from "../components/admin/Codes";
+import AddUser from "../components/admin/AddUser";
+import Tasks from "../components/admin/Tasks";
 
 export default function AdminPage() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("codes");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [companies, setCompanies] = useState([]);
-  const [assemblyCodes, setAssemblyCodes] = useState([]);
-
-  const [companyName, setCompanyName] = useState("");
-  const [companyCode, setCompanyCode] = useState("");
-  const [assemblyName, setAssemblyName] = useState("");
-  const [assemblyCode, setAssemblyCode] = useState("");
-
-  const [editingCompany, setEditingCompany] = useState(null);
-  const [editingAssembly, setEditingAssembly] = useState(null);
-
-  useEffect(() => {
-    fetchCompanies();
-    fetchAssemblyCodes();
-  }, []);
-
-  const fetchCompanies = async () => {
-    try {
-      const res = await fetch("http://localhost:5000/api/admin/company-codes");
-      const data = await res.json();
-      setCompanies(data.codes || []);
-    } catch (err) {
-      console.error("Error fetching companies:", err);
-    }
-  };
-
-  const fetchAssemblyCodes = async () => {
-    try {
-      const res = await fetch("http://localhost:5000/api/admin/assembly-codes");
-      const data = await res.json();
-      setAssemblyCodes(data.codes || []);
-    } catch (err) {
-      console.error("Error fetching assemblies:", err);
-    }
-  };
-
-  const addCompany = async () => {
-    if (!companyName || !companyCode) return alert("Enter both fields");
-    const res = await fetch("http://localhost:5000/api/admin/add-company", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: companyName, code: companyCode }),
-    });
-    if (res.ok) {
-      fetchCompanies();
-      setCompanyName("");
-      setCompanyCode("");
-    } else alert("Failed to add company");
-  };
-
-  const addAssembly = async () => {
-    if (!assemblyName || !assemblyCode) return alert("Enter both fields");
-    const res = await fetch("http://localhost:5000/api/admin/add-assembly", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: assemblyName, code: assemblyCode }),
-    });
-    if (res.ok) {
-      fetchAssemblyCodes();
-      setAssemblyName("");
-      setAssemblyCode("");
-    } else alert("Failed to add assembly");
-  };
-
-  const deleteCompany = async (code) => {
-    if (!window.confirm("Are you sure?")) return;
-    const res = await fetch("http://localhost:5000/api/admin/delete-company", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
-    });
-    if (res.ok) fetchCompanies();
-    else alert("Failed to delete company");
-  };
-
-  const deleteAssembly = async (code) => {
-    if (!window.confirm("Are you sure?")) return;
-    const res = await fetch("http://localhost:5000/api/admin/delete-assembly", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
-    });
-    if (res.ok) fetchAssemblyCodes();
-    else alert("Failed to delete assembly");
-  };
-
-  const editCompany = async () => {
-    const { oldCode, name, code } = editingCompany;
-    const res = await fetch("http://localhost:5000/api/admin/edit-company", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ oldCode, newName: name, newCode: code }),
-    });
-    if (res.ok) {
-      fetchCompanies();
-      setEditingCompany(null);
-    } else alert("Failed to update company");
-  };
-
-  const editAssembly = async () => {
-    const { oldCode, name, code } = editingAssembly;
-    const res = await fetch("http://localhost:5000/api/admin/edit-assembly", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ oldCode, newName: name, newCode: code }),
-    });
-    if (res.ok) {
-      fetchAssemblyCodes();
-      setEditingAssembly(null);
-    } else alert("Failed to update assembly");
+  const renderContent = () => {
+    if (activeTab === "codes") return <Codes />;
+    if (activeTab === "users") return <AddUser />;
+    if (activeTab === "tasks") return <Tasks />;
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
+    <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col">
       <Header />
+
+      {/* Top bar */}
       <div className="p-4 flex justify-between items-center bg-white border-b border-gray-200 shadow">
+        <button
+          className="md:hidden p-2 bg-gray-200 rounded-lg"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+        >
+          <Menu size={24} />
+        </button>
         <h1 className="text-xl font-semibold">Admin Panel</h1>
         <button
-          onClick={() => navigate("/admin")} // Navigate back to AdminDashboard
+          onClick={() => navigate("/admin")}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
         >
           ← Back to Dashboard
         </button>
       </div>
 
-      <div className="px-4 py-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Companies */}
-        <div className="bg-white p-6 rounded-2xl shadow-md">
-          <h2 className="text-xl font-bold mb-4">Manage Companies</h2>
-          <div className="flex gap-4 mb-4">
-            <input
-              type="text"
-              placeholder="Company Name"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-xl"
-            />
-            <input
-              type="text"
-              placeholder="Company Code"
-              value={companyCode}
-              onChange={(e) => setCompanyCode(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-xl"
-            />
-            <button
-              onClick={addCompany}
-              className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition"
-            >
-              <PlusCircle size={16} className="inline-block mr-1" /> Add
+      <div className="flex flex-1 relative">
+        {/* Sidebar */}
+        <div
+          className={`fixed md:relative top-0 left-0 h-full w-64 bg-white shadow-md border-r transform transition-transform duration-300 z-50 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          }`}
+        >
+          <div className="flex justify-end p-2 md:hidden">
+            <button onClick={() => setSidebarOpen(false)}>
+              <X size={24} />
             </button>
           </div>
-          <ul className="space-y-2">
-            {companies.map((c) => (
-              <li
-                key={c.code}
-                className="flex justify-between items-center p-3 border border-gray-200 rounded-xl bg-gray-50"
-              >
-                {editingCompany?.oldCode === c.code ? (
-                  <div className="flex gap-2 w-full">
-                    <input
-                      value={editingCompany.name}
-                      onChange={(e) =>
-                        setEditingCompany({ ...editingCompany, name: e.target.value })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-lg"
-                    />
-                    <input
-                      value={editingCompany.code}
-                      onChange={(e) =>
-                        setEditingCompany({ ...editingCompany, code: e.target.value })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-lg"
-                    />
-                    <button onClick={editCompany} className="bg-blue-500 text-white px-3 rounded-lg">
-                      Save
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <span>{c.name} ({c.code})</span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setEditingCompany({ oldCode: c.code, name: c.name, code: c.code })}
-                        className="bg-yellow-500 text-white px-3 py-1 rounded-lg hover:bg-yellow-600"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => deleteCompany(c.code)}
-                        className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
+          <div className="p-4 border-b font-bold text-lg">Options</div>
+          <ul className="p-4 space-y-2">
+            <li
+              className={`cursor-pointer p-2 rounded-lg ${
+                activeTab === "codes" ? "bg-blue-100 font-semibold" : ""
+              }`}
+              onClick={() => {
+                setActiveTab("codes");
+                setSidebarOpen(false);
+              }}
+            >
+              Codes
+            </li>
+            <li
+              className={`cursor-pointer p-2 rounded-lg ${
+                activeTab === "users" ? "bg-blue-100 font-semibold" : ""
+              }`}
+              onClick={() => {
+                setActiveTab("users");
+                setSidebarOpen(false);
+              }}
+            >
+              Add User
+            </li>
+            <li
+              className={`cursor-pointer p-2 rounded-lg ${
+                activeTab === "tasks" ? "bg-blue-100 font-semibold" : ""
+              }`}
+              onClick={() => {
+                setActiveTab("tasks");
+                setSidebarOpen(false);
+              }}
+            >
+              Tasks
+            </li>
           </ul>
         </div>
 
-        {/* Assemblies */}
-        <div className="bg-white p-6 rounded-2xl shadow-md">
-          <h2 className="text-xl font-bold mb-4">Manage Assemblies</h2>
-          <div className="flex gap-4 mb-4">
-            <input
-              type="text"
-              placeholder="Assembly Name"
-              value={assemblyName}
-              onChange={(e) => setAssemblyName(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-xl"
-            />
-            <input
-              type="text"
-              placeholder="Assembly Code"
-              value={assemblyCode}
-              onChange={(e) => setAssemblyCode(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-xl"
-            />
-            <button
-              onClick={addAssembly}
-              className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition"
-            >
-              <PlusCircle size={16} className="inline-block mr-1" /> Add
-            </button>
-          </div>
-          <ul className="space-y-2">
-            {assemblyCodes.map((a) => (
-              <li
-                key={a.code}
-                className="flex justify-between items-center p-3 border border-gray-200 rounded-xl bg-gray-50"
-              >
-                {editingAssembly?.oldCode === a.code ? (
-                  <div className="flex gap-2 w-full">
-                    <input
-                      value={editingAssembly.name}
-                      onChange={(e) =>
-                        setEditingAssembly({ ...editingAssembly, name: e.target.value })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-lg"
-                    />
-                    <input
-                      value={editingAssembly.code}
-                      onChange={(e) =>
-                        setEditingAssembly({ ...editingAssembly, code: e.target.value })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-lg"
-                    />
-                    <button onClick={editAssembly} className="bg-blue-500 text-white px-3 rounded-lg">
-                      Save
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <span>{a.name} ({a.code})</span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setEditingAssembly({ oldCode: a.code, name: a.name, code: a.code })}
-                        className="bg-yellow-500 text-white px-3 py-1 rounded-lg hover:bg-yellow-600"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => deleteAssembly(a.code)}
-                        className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* Overlay for mobile */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black opacity-30 z-40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          ></div>
+        )}
+
+        {/* Main content */}
+        <div className="flex-1 p-6 overflow-y-auto">{renderContent()}</div>
       </div>
     </div>
   );

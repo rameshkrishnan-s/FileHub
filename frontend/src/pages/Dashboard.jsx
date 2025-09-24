@@ -407,7 +407,7 @@ export default function Dashboard({ authToken, setPage }) {
 
         {/* Top Bar */}
         <div className="top-bar">
-          <h1>File Manager</h1>
+          <h1>Admin Panel</h1>
           <div className="top-buttons">
             <span>Welcome, User</span>
             <button onClick={goToAdminPage} className="btn btn-green">
