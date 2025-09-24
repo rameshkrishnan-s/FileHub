@@ -229,6 +229,41 @@ router.get("/users", async (req, res) => {
   }
 });
 
+// Get user details by ID or email
+router.get("/profile", async (req, res) => {
+  const { id, email } = req.query;
+
+  if (!id && !email) {
+    return res.status(400).json({ message: "Please provide user id or email!" });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    let query = "SELECT u.id, u.name, u.email, u.position, r.name AS role FROM users u JOIN roles r ON u.role_id = r.id WHERE ";
+    let params = [];
+
+    if (id) {
+      query += "u.id = ?";
+      params.push(id);
+    } else if (email) {
+      query += "u.email = ?";
+      params.push(email);
+    }
+
+    const [users] = await conn.execute(query, params);
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: "User not found!" });
+    }
+
+    res.json({ user: users[0] });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching user.", error: err.toString() });
+  } finally {
+    conn.release();
+  }
+});
+
 
 // Export CommonJS
 module.exports = router;
