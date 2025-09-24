@@ -11,6 +11,9 @@ db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
 // Import models
+db.Role = require('./role')(sequelize, Sequelize.DataTypes);
+db.User = require('./user')(sequelize, Sequelize.DataTypes);
+
 db.User = require('./user')(sequelize, Sequelize);
 db.File = require('./file')(sequelize, Sequelize);
 db.Metadata = require('./metadata')(sequelize, Sequelize);
