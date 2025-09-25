@@ -12,19 +12,23 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const renderContent = () => {
-    if (activeTab === "codes") return <Codes />;
-    if (activeTab === "users") return <AddUser />;
-    if (activeTab === "tasks") return <Tasks />;
+    return (
+      <div className="w-full max-w-4xl mx-auto">
+        {activeTab === "codes" && <Codes />}
+        {activeTab === "users" && <AddUser />}
+        {activeTab === "tasks" && <Tasks />}
+      </div>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col">
+    <div className="h-screen flex flex-col bg-gray-50 text-gray-800">
       {/* Header */}
       <Header />
 
-      {/* Top bar */}
-      <div className="p-4 flex justify-between items-center bg-white border-b border-gray-200 shadow">
-        {/* Hamburger Button */}
+      {/* Admin Panel Bar */}
+      <div className="sticky top-0 z-40 p-4 flex justify-between items-center bg-white border-b border-gray-200 shadow">
+        {/* Hamburger */}
         <button
           className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition"
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -46,11 +50,11 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* Body layout */}
-      <div className="flex flex-1 relative">
+      {/* Main Layout */}
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <div
-          className={`fixed md:relative top-[88px] md:top-0 left-0 h-[calc(100%-88px)] md:h-auto w-64 bg-white shadow-lg border-r transform transition-transform duration-300 ease-in-out z-50 ${
+          className={`fixed md:sticky md:top-[72px] left-0 h-full w-64 bg-white shadow-lg border-r transform transition-transform duration-300 ease-in-out z-30 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
           }`}
         >
@@ -66,7 +70,7 @@ export default function AdminPage() {
                   setActiveTab(item.key);
                   setSidebarOpen(false);
                 }}
-                className={`cursor-pointer px-4 py-2 rounded-lg font-medium flex items-center justify-between transition ${
+                className={`cursor-pointer px-4 py-2 rounded-lg font-medium flex items-center transition ${
                   activeTab === item.key
                     ? "bg-blue-600 text-white shadow"
                     : "hover:bg-gray-100 text-gray-700"
@@ -81,13 +85,16 @@ export default function AdminPage() {
         {/* Overlay for mobile */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black opacity-40 z-40 md:hidden"
+            className="fixed inset-0 bg-black opacity-40 z-20 md:hidden"
             onClick={() => setSidebarOpen(false)}
           ></div>
         )}
 
-        {/* Main Content */}
-        <div className="flex-1 p-6 overflow-y-auto">{renderContent()}</div>
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-6 flex justify-center">
+          {/* Centered content */}
+          {renderContent()}
+        </div>
       </div>
     </div>
   );
