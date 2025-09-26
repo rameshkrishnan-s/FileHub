@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/header";
 import Codes from "../components/admin/Codes";
 import AddUser from "../components/admin/AddUser";
 import Tasks from "../components/admin/Tasks";
+import { Menu, X } from "lucide-react";
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -12,24 +12,36 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const renderContent = () => {
-    if (activeTab === "codes") return <Codes />;
-    if (activeTab === "users") return <AddUser />;
-    if (activeTab === "tasks") return <Tasks />;
+    return (
+      <div className="w-full max-w-4xl mx-auto">
+        {activeTab === "codes" && <Codes />}
+        {activeTab === "users" && <AddUser />}
+        {activeTab === "tasks" && <Tasks />}
+      </div>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col">
+    <div className="h-screen flex flex-col bg-gray-50 text-gray-800">
+      {/* Header */}
       <Header />
 
-      {/* Top bar */}
-      <div className="p-4 flex justify-between items-center bg-white border-b border-gray-200 shadow">
+      {/* Admin Panel Bar */}
+      <div className="sticky top-0 z-40 p-4 flex justify-between items-center bg-white border-b border-gray-200 shadow">
+        {/* Hamburger */}
         <button
-          className="md:hidden p-2 bg-gray-200 rounded-lg"
+          className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition"
           onClick={() => setSidebarOpen(!sidebarOpen)}
         >
-          <Menu size={24} />
+          {sidebarOpen ? (
+            <X className="w-6 h-6 text-gray-800" />
+          ) : (
+            <Menu className="w-6 h-6 text-gray-800" />
+          )}
         </button>
+
         <h1 className="text-xl font-semibold">Admin Panel</h1>
+
         <button
           onClick={() => navigate("/admin")}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
@@ -38,66 +50,51 @@ export default function AdminPage() {
         </button>
       </div>
 
-      <div className="flex flex-1 relative">
+      {/* Main Layout */}
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <div
-          className={`fixed md:relative top-0 left-0 h-full w-64 bg-white shadow-md border-r transform transition-transform duration-300 z-50 ${
+          className={`fixed md:sticky md:top-[72px] left-0 h-full w-64 bg-white shadow-lg border-r transform transition-transform duration-300 ease-in-out z-30 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
           }`}
         >
-          <div className="flex justify-end p-2 md:hidden">
-            <button onClick={() => setSidebarOpen(false)}>
-              <X size={24} />
-            </button>
-          </div>
-          <div className="p-4 border-b font-bold text-lg">Options</div>
-          <ul className="p-4 space-y-2">
-            <li
-              className={`cursor-pointer p-2 rounded-lg ${
-                activeTab === "codes" ? "bg-blue-100 font-semibold" : ""
-              }`}
-              onClick={() => {
-                setActiveTab("codes");
-                setSidebarOpen(false);
-              }}
-            >
-              Codes
-            </li>
-            <li
-              className={`cursor-pointer p-2 rounded-lg ${
-                activeTab === "users" ? "bg-blue-100 font-semibold" : ""
-              }`}
-              onClick={() => {
-                setActiveTab("users");
-                setSidebarOpen(false);
-              }}
-            >
-              Add User
-            </li>
-            <li
-              className={`cursor-pointer p-2 rounded-lg ${
-                activeTab === "tasks" ? "bg-blue-100 font-semibold" : ""
-              }`}
-              onClick={() => {
-                setActiveTab("tasks");
-                setSidebarOpen(false);
-              }}
-            >
-              Tasks
-            </li>
-          </ul>
+          <nav className="p-4 space-y-3">
+            {[
+              { key: "codes", label: "Codes" },
+              { key: "users", label: "Add User" },
+              { key: "tasks", label: "Tasks" },
+            ].map((item) => (
+              <div
+                key={item.key}
+                onClick={() => {
+                  setActiveTab(item.key);
+                  setSidebarOpen(false);
+                }}
+                className={`cursor-pointer px-4 py-2 rounded-lg font-medium flex items-center transition ${
+                  activeTab === item.key
+                    ? "bg-blue-600 text-white shadow"
+                    : "hover:bg-gray-100 text-gray-700"
+                }`}
+              >
+                {item.label}
+              </div>
+            ))}
+          </nav>
         </div>
 
         {/* Overlay for mobile */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black opacity-30 z-40 md:hidden"
+            className="fixed inset-0 bg-black opacity-40 z-20 md:hidden"
             onClick={() => setSidebarOpen(false)}
           ></div>
         )}
 
-        {/* Main content */}
-        <div className="flex-1 p-6 overflow-y-auto">{renderContent()}</div>
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-6 flex justify-center">
+          {/* Centered content */}
+          {renderContent()}
+        </div>
       </div>
     </div>
   );
