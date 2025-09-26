@@ -22,7 +22,7 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    res.json({ token, role: user.role_id, name: user.name });
+    res.json({ token, id: user.id, role: user.role_id, name: user.name });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Internal server error" });
