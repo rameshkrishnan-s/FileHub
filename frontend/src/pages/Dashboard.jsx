@@ -7,6 +7,8 @@ import FileGrid from "../components/dashboard/FileGrid.jsx";
 import Breadcrumb from "../components/dashboard/Breadcrumb.jsx";
 import ActionButtons from "../components/dashboard/ActionButtons.jsx";
 import { useNavigate } from 'react-router-dom';
+import ProfileMenu from "../components/dashboard/ProfileMenu";
+
 
 
 export default function Dashboard({ authToken, setPage }) {
@@ -409,14 +411,15 @@ export default function Dashboard({ authToken, setPage }) {
         <div className="top-bar">
           <h1>Admin Panel</h1>
           <div className="top-buttons">
-            <span>Welcome, User</span>
-            <button onClick={goToAdminPage} className="btn btn-green">
-              Admin
-            </button>
-            <button onClick={logout} className="btn btn-red">
-              Logout
-            </button>
-          </div>
+  <ProfileMenu authToken={authToken} />
+  <button onClick={goToAdminPage} className="btn btn-green">
+    Admin
+  </button>
+  <button onClick={logout} className="btn btn-red">
+    Logout
+  </button>
+</div>
+
         </div>
 
         {/* Filters and Actions */}

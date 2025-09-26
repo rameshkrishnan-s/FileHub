@@ -13,7 +13,7 @@ export default function AdminPage() {
 
   const renderContent = () => {
     return (
-      <div className="w-full max-w-4xl mx-auto">
+      <div className="-full maxw-w-4xl mx-auto">
         {activeTab === "codes" && <Codes />}
         {activeTab === "users" && <AddUser />}
         {activeTab === "tasks" && <Tasks />}

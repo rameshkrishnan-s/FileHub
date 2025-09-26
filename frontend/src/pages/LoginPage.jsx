@@ -24,9 +24,11 @@ export default function Login() {
     try {
       const res = await API.post("/api/auth/login", { email, password });
 
+      // Save login details to localStorage
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("role", res.data.role);
       localStorage.setItem("name", res.data.name);
+      localStorage.setItem("userEmail", res.data.email); // <-- Added for profile
 
       if (res.data.role === 1) navigate("/admin");
       else if (res.data.role === 2) navigate("/user");
