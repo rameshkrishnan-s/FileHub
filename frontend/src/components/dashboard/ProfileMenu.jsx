@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { User } from "lucide-react"; // Default person icon
 
 export default function ProfileMenu({ authToken }) {
   const [user, setUser] = useState(null);
@@ -8,12 +9,13 @@ export default function ProfileMenu({ authToken }) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const email = localStorage.getItem("userEmail"); // make sure this is set in login
-        if (!email) return;
+        const id = localStorage.getItem("id"); // Ensure ID is set after login
+        if (!id) return;
 
-        const res = await fetch(`http://localhost:5000/api/profile?email=${encodeURIComponent(email)}`, {
-          headers: { Authorization: `Bearer ${authToken}` }, // optional if backend needs token
+        const res = await fetch(`http://localhost:5000/api/admin/profile?id=${encodeURIComponent(id)}`, {
+          headers: { Authorization: `Bearer ${authToken}` }, // Optional if backend uses token
         });
+
         const data = await res.json();
 
         if (res.ok) {
@@ -38,12 +40,8 @@ export default function ProfileMenu({ authToken }) {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
       >
+        <User size={24} className="text-gray-700" /> {/* Default person icon */}
         <span className="font-medium">{user?.name || (loading ? "Loading..." : "User")}</span>
-        <img
-          src={`https://ui-avatars.com/api/?name=${user?.name || "U"}&background=16a34a&color=fff`}
-          alt="avatar"
-          className="w-8 h-8 rounded-full"
-        />
       </button>
 
       {/* Dropdown */}
@@ -55,6 +53,7 @@ export default function ProfileMenu({ authToken }) {
             <>
               <p className="font-semibold text-gray-900">{user.name}</p>
               <p className="text-sm text-gray-600">{user.email}</p>
+              <p className="text-sm text-gray-600">{user.position}</p>
               <p className="text-sm text-green-700 font-medium mt-1">Role: {user.role}</p>
             </>
           ) : (
