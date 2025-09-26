@@ -26,6 +26,7 @@ export default function Login() {
 
       // Save login details to localStorage
       localStorage.setItem("token", res.data.token);
+      localStorage.setItem("id", res.data.id); 
       localStorage.setItem("role", res.data.role);
       localStorage.setItem("name", res.data.name);
       localStorage.setItem("userEmail", res.data.email); // <-- Added for profile
