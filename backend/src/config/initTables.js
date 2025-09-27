@@ -37,6 +37,7 @@ async function initTables() {
         email VARCHAR(100) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
         role_id INT NOT NULL,
+        position VARCHAR(100),
         FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
       )
     `);

@@ -8,7 +8,11 @@ const authRoutes = require("./src/routes/auth");
 const folderRoutes = require("./src/routes/folderRoutes");
 const adminRoutes = require("./src/routes/adminRoutes");
 const fileRoutes = require("./src/routes/file");
+const combinedRoutes = require("./src/routes/combined");
 
+
+// Initialize tables
+initTables();
 
 const app = express();
 
@@ -21,6 +25,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/folder", folderRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/files", fileRoutes);
+app.use("/api/combined", combinedRoutes);
 
 // Test endpoint
 app.get("/", (req, res) => res.send("Backend running 🚀"));
