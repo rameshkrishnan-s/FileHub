@@ -230,57 +230,57 @@ router.get("/users", async (req, res) => {
 });
 
 // Get user details by ID or email
-// router.post("/allocate-task", async (req, res) => {
-//   const { user_id, task, file_or_folder_name, message, permission } = req.body;
+router.post("/allocate-task", async (req, res) => {
+  const { user_id, task, file_or_folder_name, message, permission } = req.body;
 
-//   if (!user_id || !task) {
-//     return res.status(400).json({ message: "User ID and task are required!" });
-//   }
+  if (!user_id || !task) {
+    return res.status(400).json({ message: "User ID and task are required!" });
+  }
 
-//   const conn = await pool.getConnection();
-//   try {
-//     // ✅ Check if user exists
-//     const [user] = await conn.execute(
-//       "SELECT id, name FROM users WHERE id = ?",
-//       [user_id]
-//     );
-//     if (user.length === 0) {
-//       return res.status(404).json({ message: "User not found!" });
-//     }
+  const conn = await pool.getConnection();
+  try {
+    // ✅ Check if user exists
+    const [user] = await conn.execute(
+      "SELECT id, name FROM users WHERE id = ?",
+      [user_id]
+    );
+    if (user.length === 0) {
+      return res.status(404).json({ message: "User not found!" });
+    }
 
-//     const userName = user[0].name;
+    const userName = user[0].name;
 
-//     // ✅ Insert task with created_at timestamp
-//     await conn.execute(
-//       `INSERT INTO tasks (user_id, task, file_or_folder_name, message, permission, created_at)
-//        VALUES (?, ?, ?, ?, ?, NOW())`,
-//       [user_id, task, file_or_folder_name || null, message || null, permission || "read"]
-//     );
+    // ✅ Insert task with created_at timestamp
+    await conn.execute(
+      `INSERT INTO tasks (user_id, task, file_or_folder_name, message, permission, created_at)
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [user_id, task, file_or_folder_name || null, message || null, permission || "read"]
+    );
 
-//     // ✅ Update UserFile table (if required in your workflow)
-//     const { UserFile } = require("../models"); // adjust path
-//     await UserFile.upsert({
-//       user_id,
-//       user_name: userName,
-//       file_or_folder: file_or_folder_name || "N/A",
-//       permission: permission || "read",
-//     });
+    // ✅ Update UserFile table (if required in your workflow)
+    const { UserFile } = require("../models"); // adjust path
+    await UserFile.upsert({
+      user_id,
+      user_name: userName,
+      file_or_folder: file_or_folder_name || "N/A",
+      permission: permission || "read",
+    });
 
-//     res.json({ message: "Task allocated successfully and user file updated!" });
-//   } catch (err) {
-//     console.error("Error allocating task:", err);
-//     res
-//       .status(500)
-//       .json({ message: "Error allocating task.", error: err.toString() });
-//   } finally {
-//     conn.release();
-//   }
-// });
+    res.json({ message: "Task allocated successfully and user file updated!" });
+  } catch (err) {
+    console.error("Error allocating task:", err);
+    res
+      .status(500)
+      .json({ message: "Error allocating task.", error: err.toString() });
+  } finally {
+    conn.release();
+  }
+});
 
 
 // ------------------ TASK ROUTES ------------------ //
 
-// // Allocate task to a user
+// Allocate task to a user
     router.post("/allocate-task", async (req, res) => {
   const { user_id, task, file_or_folder_name, message, permission } = req.body;
 
@@ -304,20 +304,14 @@ router.get("/users", async (req, res) => {
       [user_id, task, file_or_folder_name || null, message || null]
     );
 
-    await conn.execute(
-  "INSERT INTO tasks (user_id, task, file_or_folder_name, message) VALUES (?, ?, ?, ?)",
-  [user_id, task, file_or_folder_name || null, message || null]
-);
-
-
     // ✅ Update UserFile table using Sequelize
     const { UserFile } = require("../models"); // adjust path
     await UserFile.upsert({
-  user_id,
-  user_name: userName,
-  file_or_folder: file_or_folder_name || "N/A",
-  permission: permission || "read", // enum default
-});
+      user_id,
+      user_name: userName,
+      file_or_folder: file_or_folder_name || "N/A",
+      permission: permission || "read", // default to "read"
+    });
 
     res.json({ message: "Task allocated successfully and user file updated!" });
   } catch (err) {
