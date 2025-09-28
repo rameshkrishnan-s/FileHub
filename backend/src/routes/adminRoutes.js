@@ -281,6 +281,16 @@ router.post("/allocate-task", async (req, res) => {
 // ------------------ TASK ROUTES ------------------ //
 
 // Allocate task to a user
+    router.post("/allocate-task", async (req, res) => {
+  const { user_id, task, file_or_folder_name, message, permission } = req.body;
+
+  if (!user_id || !task) {
+    return res.status(400).json({ message: "User ID and task are required!" });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    // ✅ Check if user exists
     const [user] = await conn.execute("SELECT id, name FROM users WHERE id = ?", [user_id]);
     if (user.length === 0) {
       return res.status(404).json({ message: "User not found!" });
