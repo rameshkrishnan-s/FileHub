@@ -5,6 +5,7 @@ import AdminDashboard from "./pages/Dashboard.jsx";
 import UserDashboard from "./pages/UserDashboard.jsx";
 import ViewerDashboard from "./pages/ViewerDashboard.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
         <Route path="/user" element={<UserDashboard />} />
         <Route path="/viewer" element={<ViewerDashboard />} />
         <Route path="/admin-page" element={<AdminPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
     </Router>
   );

@@ -284,9 +284,9 @@ router.post("/allocate-task", async (req, res) => {
 
     const userName = user[0].name;
 
-    // ✅ Insert task
+    // ✅ Insert task with status 'pending'
     await conn.execute(
-      "INSERT INTO tasks (user_id, task, file_or_folder_name, message) VALUES (?, ?, ?, ?)",
+      "INSERT INTO tasks (user_id, task, file_or_folder_name, message, status) VALUES (?, ?, ?, ?, 'pending')",
       [user_id, task, file_or_folder_name || null, message || null]
     );
 
@@ -310,6 +310,7 @@ router.post("/allocate-task", async (req, res) => {
 // 📌 Get tasks and file permissions by user_id
 router.get("/my-tasks/:user_id", async (req, res) => {
   const { user_id } = req.params;
+  const { status } = req.query;
 
   if (!user_id) {
     return res.status(400).json({ message: "User ID is required!" });
@@ -323,11 +324,16 @@ router.get("/my-tasks/:user_id", async (req, res) => {
       return res.status(404).json({ message: "User not found!" });
     }
 
-    // ✅ Get tasks for this user
-    const [tasks] = await conn.execute(
-      "SELECT id, task, file_or_folder_name, message, created_at FROM tasks WHERE user_id = ?",
-      [user_id]
-    );
+    // ✅ Get tasks for this user with status filter
+    let taskQuery = "SELECT id, task, file_or_folder_name, message, status, created_at FROM tasks WHERE user_id = ?";
+    let taskParams = [user_id];
+    
+    if (status) {
+      taskQuery += " AND status = ?";
+      taskParams.push(status);
+    }
+
+    const [tasks] = await conn.execute(taskQuery, taskParams);
 
     // ✅ Get file/folder permissions from Sequelize
     const { UserFile } = require("../models"); // adjust path
@@ -340,6 +346,51 @@ router.get("/my-tasks/:user_id", async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: "Error fetching tasks.", error: err.toString() });
+  } finally {
+    conn.release();
+  }
+});
+
+// Update task status
+router.put("/update-task-status/:task_id", async (req, res) => {
+  const { task_id } = req.params;
+  const { status } = req.body;
+
+  if (!task_id || !status) {
+    return res.status(400).json({ message: "Task ID and status are required!" });
+  }
+
+  if (!['pending', 'accepted', 'rejected', 'completed'].includes(status)) {
+    return res.status(400).json({ message: "Invalid status!" });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    // Check if task exists and belongs to user (assuming auth middleware provides user_id)
+    const [task] = await conn.execute("SELECT * FROM tasks WHERE id = ?", [task_id]);
+    if (task.length === 0) {
+      return res.status(404).json({ message: "Task not found!" });
+    }
+
+    await conn.execute("UPDATE tasks SET status = ? WHERE id = ?", [status, task_id]);
+
+    res.json({ message: "Task status updated successfully!" });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating task status.", error: err.toString() });
+  } finally {
+    conn.release();
+  }
+});
+
+// Get files by folder (assuming folder is extraCode)
+router.get("/files/folder/:folderName", async (req, res) => {
+  const { folderName } = req.params;
+  const conn = await pool.getConnection();
+  try {
+    const [files] = await conn.execute("SELECT * FROM files WHERE extraCode = ?", [folderName]);
+    res.json({ files });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching files.", error: err.toString() });
   } finally {
     conn.release();
   }
