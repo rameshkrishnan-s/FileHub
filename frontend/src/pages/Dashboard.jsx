@@ -508,5 +508,3 @@ export default function Dashboard({ authToken, setPage }) {
     </>
   );
 }
-
-

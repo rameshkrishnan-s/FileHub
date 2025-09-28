@@ -230,6 +230,43 @@ router.get("/users", async (req, res) => {
 });
 
 // Get user details by ID or email
+router.get("/profile", async (req, res) => {
+  const { id, email } = req.query;
+
+  if (!id && !email) {
+    return res.status(400).json({ message: "Please provide user id or email!" });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    let query = "SELECT u.id, u.name, u.email, u.position, r.name AS role FROM users u JOIN roles r ON u.role_id = r.id WHERE ";
+    let params = [];
+
+    if (id) {
+      query += "u.id = ?";
+      params.push(id);
+    } else if (email) {
+      query += "u.email = ?";
+      params.push(email);
+    }
+
+    const [users] = await conn.execute(query, params);
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: "User not found!" });
+    }
+
+    res.json({ user: users[0] });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching user.", error: err.toString() });
+  } finally {
+    conn.release();
+  }
+});
+
+// ------------------ TASK ROUTES ------------------ //
+
+// Allocate task to a user
 router.post("/allocate-task", async (req, res) => {
   const { user_id, task, file_or_folder_name, message, permission } = req.body;
 
@@ -240,47 +277,6 @@ router.post("/allocate-task", async (req, res) => {
   const conn = await pool.getConnection();
   try {
     // ✅ Check if user exists
-    const [user] = await conn.execute(
-      "SELECT id, name FROM users WHERE id = ?",
-      [user_id]
-    );
-    if (user.length === 0) {
-      return res.status(404).json({ message: "User not found!" });
-    }
-
-    const userName = user[0].name;
-
-    // ✅ Insert task with created_at timestamp
-    await conn.execute(
-      `INSERT INTO tasks (user_id, task, file_or_folder_name, message, permission, created_at)
-       VALUES (?, ?, ?, ?, ?, NOW())`,
-      [user_id, task, file_or_folder_name || null, message || null, permission || "read"]
-    );
-
-    // ✅ Update UserFile table (if required in your workflow)
-    const { UserFile } = require("../models"); // adjust path
-    await UserFile.upsert({
-      user_id,
-      user_name: userName,
-      file_or_folder: file_or_folder_name || "N/A",
-      permission: permission || "read",
-    });
-
-    res.json({ message: "Task allocated successfully and user file updated!" });
-  } catch (err) {
-    console.error("Error allocating task:", err);
-    res
-      .status(500)
-      .json({ message: "Error allocating task.", error: err.toString() });
-  } finally {
-    conn.release();
-  }
-});
-
-
-// ------------------ TASK ROUTES ------------------ //
-
-// Allocate task to a user
     const [user] = await conn.execute("SELECT id, name FROM users WHERE id = ?", [user_id]);
     if (user.length === 0) {
       return res.status(404).json({ message: "User not found!" });
