@@ -7,9 +7,7 @@ import FileGrid from "../components/dashboard/FileGrid.jsx";
 import Breadcrumb from "../components/dashboard/Breadcrumb.jsx";
 import ActionButtons from "../components/dashboard/ActionButtons.jsx";
 import { useNavigate } from 'react-router-dom';
-import ProfileMenu from "../components/dashboard/ProfileMenu";
-
-
+import { User } from "lucide-react";
 
 export default function Dashboard({ authToken, setPage }) {
   const [files, setFiles] = useState([]);
@@ -54,7 +52,6 @@ export default function Dashboard({ authToken, setPage }) {
     setAssemblyCodeFilter("");
   }, [currentPath]);
 
-  
   const navigate = useNavigate();
   const logout = () => {
     localStorage.removeItem("authToken");
@@ -63,30 +60,27 @@ export default function Dashboard({ authToken, setPage }) {
     navigate("/"); // redirect to login
   };
 
- const fetchFiles = async () => {
-  try {
-    const response = await fetch(
-      `http://localhost:5000/api/folder/list?path=${encodeURIComponent(currentPath)}`
-    );
-    const data = await response.json();
-    if (response.ok) {
-      // Sort by createdAt descending (newest first)
-      const sortedFiles = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setFiles(sortedFiles);
-    } else {
-      setError("Failed to load files.");
+  const fetchFiles = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/folder/list?path=${encodeURIComponent(currentPath)}`
+      );
+      const data = await response.json();
+      if (response.ok) {
+        // Sort by createdAt descending (newest first)
+        const sortedFiles = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setFiles(sortedFiles);
+      } else {
+        setError("Failed to load files.");
+      }
+    } catch (err) {
+      setError("Error fetching files.");
     }
-  } catch (err) {
-    setError("Error fetching files.");
-  }
-};
-
+  };
 
   const fetchCompanies = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/admin/company-codes"
-      );
+      const response = await fetch("http://localhost:5000/api/admin/company-codes");
       const data = await response.json();
       setCompanies(data.codes || []);
     } catch (err) {
@@ -96,9 +90,7 @@ export default function Dashboard({ authToken, setPage }) {
 
   const fetchAssemblyCodes = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/admin/assembly-codes"
-      );
+      const response = await fetch("http://localhost:5000/api/admin/assembly-codes");
       const data = await response.json();
       setAssemblyCodes(data.codes || []);
     } catch (err) {
@@ -113,14 +105,11 @@ export default function Dashboard({ authToken, setPage }) {
         : year;
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/folder/create-folder",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ folderName, path: currentPath }),
-        }
-      );
+      const response = await fetch("http://localhost:5000/api/folder/create-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderName, path: currentPath }),
+      });
 
       if (response.ok) {
         await fetchFiles();
@@ -170,12 +159,7 @@ export default function Dashboard({ authToken, setPage }) {
   };
 
   const handleSearch = async (page = 1) => {
-    if (
-      !searchQuery.trim() &&
-      !yearFilter &&
-      !companyCodeFilter &&
-      !assemblyCodeFilter
-    ) {
+    if (!searchQuery.trim() && !yearFilter && !companyCodeFilter && !assemblyCodeFilter) {
       setSearchResults([]);
       setCurrentPage(1);
       setTotalPages(1);
@@ -282,9 +266,7 @@ export default function Dashboard({ authToken, setPage }) {
           : item.name;
 
         const response = await fetch(
-          `http://localhost:5000/api/folder/open?filePath=${encodeURIComponent(
-            filePath
-          )}`
+          `http://localhost:5000/api/folder/open?filePath=${encodeURIComponent(filePath)}`
         );
         const data = await response.json();
 
@@ -311,10 +293,9 @@ export default function Dashboard({ authToken, setPage }) {
     setCurrentPath(pathArray.join("/"));
   };
 
-
   const goToAdminPage = () => {
-  navigate("/admin-page");
-};
+    navigate("/admin-page");
+  };
 
   const navigateToPathSegment = (index) => {
     const pathArray = currentPath.split("/").filter(Boolean);
@@ -408,19 +389,25 @@ export default function Dashboard({ authToken, setPage }) {
         <Header />
 
         {/* Top Bar */}
-        <div className="top-bar">
-          <h1>Admin Panel</h1>
-          <div className="top-buttons">
-  <ProfileMenu authToken={authToken} />
-  <button onClick={goToAdminPage} className="btn btn-green">
-    Admin
-  </button>
-  <button onClick={logout} className="btn btn-red">
-    Logout
-  </button>
+        {/* Top Bar */}
+<div className="top-bar">
+  <h1>Admin Panel</h1>
+  <div className="top-buttons flex items-center gap-3">
+    <button onClick={goToAdminPage} className="btn btn-green">
+      Admin Dashboard
+    </button>
+
+    {/* Profile Icon with Navigation */}
+    <div
+      onClick={() => navigate("/profile")}
+      className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-300 cursor-pointer hover:bg-gray-400 transition"
+      title="Profile"
+    >
+      <User className="w-5 h-5 text-gray-700" />
+    </div>
+  </div>
 </div>
 
-        </div>
 
         {/* Filters and Actions */}
         <div className="filters-actions">
@@ -454,7 +441,15 @@ export default function Dashboard({ authToken, setPage }) {
         {/* Files */}
         <div className="file-grid-container">
           {searchError && (
-            <div style={{ background: "#fee2e2", padding: "10px", color: "#b91c1c", borderRadius: "6px", marginBottom: "10px" }}>
+            <div
+              style={{
+                background: "#fee2e2",
+                padding: "10px",
+                color: "#b91c1c",
+                borderRadius: "6px",
+                marginBottom: "10px",
+              }}
+            >
               {searchError}
             </div>
           )}
@@ -471,11 +466,17 @@ export default function Dashboard({ authToken, setPage }) {
               />
               {totalPages > 1 && (
                 <div className="pagination">
-                  <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1 || isSearching}>
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || isSearching}
+                  >
                     Previous
                   </button>
                   <span>Page {currentPage} of {totalPages}</span>
-                  <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages || isSearching}>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages || isSearching}
+                  >
                     Next
                   </button>
                 </div>
