@@ -17,12 +17,12 @@ router.post("/login", async (req, res) => {
     if (!match) return res.status(400).json({ error: "Invalid password" });
 
     const token = jwt.sign(
-      { id: user.id, role: user.role_id, name: user.name },
+      { id: user.id, role: user.role_id, name: user.name, email: user.email },
       process.env.JWT_SECRET || "supersecret",
       { expiresIn: "1h" }
     );
 
-    res.json({ token, id: user.id, role: user.role_id, name: user.name });
+    res.json({ token, id: user.id, role: user.role_id, name: user.name, email: user.email });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Internal server error" });

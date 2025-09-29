@@ -1,18 +1,103 @@
-// src/services/authService.js (example file)
+// src/services/authService.js
 import { jwtDecode } from "jwt-decode";
 
 export const getUserId = () => {
-  const token = sessionStorage.getItem("token"); // Or wherever you store your token
+  const token = sessionStorage.getItem("token");
   if (token) {
     try {
       const decodedToken = jwtDecode(token);
-      return decodedToken.id; // Make sure your token payload has the 'id' field
+      // Check if token is expired
+      if (decodedToken.exp && decodedToken.exp < Date.now() / 1000) {
+        logout();
+        return null;
+      }
+      return decodedToken.id;
     } catch (error) {
       console.error("Error decoding token:", error);
+      logout();
       return null;
     }
   }
   return null;
+};
+
+export const getUserRole = () => {
+  const token = sessionStorage.getItem("token");
+  if (token) {
+    try {
+      const decodedToken = jwtDecode(token);
+      // Check if token is expired
+      if (decodedToken.exp && decodedToken.exp < Date.now() / 1000) {
+        logout();
+        return null;
+      }
+      return decodedToken.role;
+    } catch (error) {
+      console.error("Error decoding token:", error);
+      logout();
+      return null;
+    }
+  }
+  return null;
+};
+
+export const getUserEmail = () => {
+  const token = sessionStorage.getItem("token");
+  if (token) {
+    try {
+      const decodedToken = jwtDecode(token);
+      // Check if token is expired
+      if (decodedToken.exp && decodedToken.exp < Date.now() / 1000) {
+        logout();
+        return null;
+      }
+      return decodedToken.email;
+    } catch (error) {
+      console.error("Error decoding token:", error);
+      logout();
+      return null;
+    }
+  }
+  return null;
+};
+
+export const getUserName = () => {
+  const token = sessionStorage.getItem("token");
+  if (token) {
+    try {
+      const decodedToken = jwtDecode(token);
+      // Check if token is expired
+      if (decodedToken.exp && decodedToken.exp < Date.now() / 1000) {
+        logout();
+        return null;
+      }
+      return decodedToken.name;
+    } catch (error) {
+      console.error("Error decoding token:", error);
+      logout();
+      return null;
+    }
+  }
+  return null;
+};
+
+export const isTokenValid = () => {
+  const token = sessionStorage.getItem("token");
+  if (!token) return false;
+  
+  try {
+    const decodedToken = jwtDecode(token);
+    // Check if token is expired
+    if (decodedToken.exp && decodedToken.exp < Date.now() / 1000) {
+      logout();
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Error validating token:", error);
+    logout();
+    return false;
+  }
 };
 
 export const logout = () => {

@@ -2,14 +2,15 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
-const db = require("../models"); // Adjust path if needed
-const { Op } = require("sequelize");
+const pool = require("../db/db");
 const { exec } = require('child_process');
 const NodeCache = require('node-cache');
+const authMiddleware = require('../middleware/authMiddleware');
+const { checkFolderPermission } = require('../middleware/folderPermissions');
 
 const router = express.Router();
 
-const STORAGE_PATH = process.env.STORAGE_PATH || path.join(__dirname, "..", "upload");
+const STORAGE_PATH = process.env.STORAGE_PATH || path.join(__dirname, "..", "..");
 let folder_path = "";
 
 // Ensure storage path exists
@@ -17,14 +18,100 @@ if (!fs.existsSync(STORAGE_PATH)) {
   fs.mkdirSync(STORAGE_PATH, { recursive: true });
 }
 
+// Get user's accessible folders
+router.get("/user-folders", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userRole = parseInt(req.user.role);
+
+    // Admin has access to all folders
+    if (userRole === 1) {
+      // Get all folders from storage
+      const getAllFolders = (dir, basePath = '') => {
+        const folders = [];
+        try {
+          const items = fs.readdirSync(dir);
+          for (const item of items) {
+            const fullPath = path.join(dir, item);
+            const relativePath = path.join(basePath, item);
+            if (fs.statSync(fullPath).isDirectory()) {
+              folders.push({
+                path: relativePath.replace(/\\/g, '/'),
+                permission: 'admin'
+              });
+              // Recursively get subfolders
+              folders.push(...getAllFolders(fullPath, relativePath));
+            }
+          }
+        } catch (error) {
+          console.error('Error reading directory:', error);
+        }
+        return folders;
+      };
+
+      const allFolders = getAllFolders(STORAGE_PATH);
+      return res.json({ folders: allFolders });
+    }
+
+    // Get folders user has access to through permissions
+    const [userFiles] = await pool.execute(
+      "SELECT file_or_folder, permission FROM user_files WHERE user_id = ?",
+      [userId]
+    );
+
+    const folders = userFiles.map(uf => ({
+      path: uf.file_or_folder,
+      permission: uf.permission
+    }));
+
+    res.json({ folders });
+  } catch (error) {
+    console.error('Error fetching user folders:', error);
+    res.status(500).json({ message: 'Error fetching folders.' });
+  }
+});
+
 // List files/folders
-router.get("/list", async (req, res) => {
+router.get("/list", authMiddleware, async (req, res) => {
   const requestedPath = req.query.path || "";
   folder_path = requestedPath;
   const fullPath = path.join(STORAGE_PATH, requestedPath);
 
+  // Check if user has permission for this path
+  const userId = req.user.id;
+  const userRole = parseInt(req.user.role);
+
+  // Admin has full access
+  if (userRole !== 1) {
+    try {
+      // Get user's permitted folders
+      const [userPermissions] = await pool.execute(
+        "SELECT file_or_folder, permission FROM user_files WHERE user_id = ?",
+        [userId]
+      );
+
+      if (userPermissions.length === 0) {
+        return res.status(403).json({ message: 'Access denied. You do not have permission for any folders.' });
+      }
+
+      // Check if user has permission for this specific path
+      const hasAccess = userPermissions.some(perm => {
+        const normRequested = requestedPath.replace(/^[A-Z]:[\/\\]?/, '').replace(/\\/g, '/');
+        const normPerm = perm.file_or_folder.replace(/^[A-Z]:[\/\\]?/, '').replace(/\\/g, '/');
+        return normRequested.startsWith(normPerm) || normPerm.startsWith(normRequested);
+      });
+
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Access denied. You do not have permission for this folder.' });
+      }
+    } catch (error) {
+      console.error('Error checking folder permissions:', error);
+      return res.status(500).json({ message: 'Error checking permissions.' });
+    }
+  }
+
   if (!fs.existsSync(fullPath)) {
-    return res.status(404).json({ message: "Directory not found." });
+    return res.json([]); // Return empty list if directory doesn't exist but user has permission
   }
 
   try {
@@ -37,16 +124,18 @@ router.get("/list", async (req, res) => {
       let metadata = null;
       if (!isDirectory) {
         const relativePath = path.join(requestedPath, name);
-        metadata = await db.Metadata.findOne({ 
-          where: { filePath: relativePath }
-        });
+        const [metadataRows] = await pool.execute(
+          "SELECT * FROM metadata WHERE filePath = ?",
+          [relativePath]
+        );
+        metadata = metadataRows[0] || null;
       }
 
       return {
         name,
         type: isDirectory ? "folder" : "file",
         createdAt: stats.birthtime,
-        ...(metadata ? metadata.toJSON() : {}),
+        ...(metadata || {}),
         path: path.join(requestedPath, name)
       };
     }));
@@ -114,9 +203,9 @@ router.get("/list", async (req, res) => {
 //   }
 // });
 
-router.post("/create-folder", async (req, res) => {
+router.post("/create-folder", authMiddleware, async (req, res) => {
   const { folderName, path: currentPath, subFolderCount } = req.body;
-  
+
   if (!folderName) {
     return res.status(400).json({ message: "Folder name is required!" });
   }
@@ -149,21 +238,20 @@ router.post("/create-folder", async (req, res) => {
     }
 
     // Store parent folder in metadata DB
-    await db.Metadata.create({
-      fileName: finalFolderName,
-      filePath: path.join(currentPath || "", finalFolderName),
-      type: "folder"
-    });
+    const now = new Date();
+    await pool.execute(
+      "INSERT INTO metadata (fileName, filePath, type, createdAt, updatedAt, fileId) VALUES (?, ?, ?, ?, ?, ?)",
+      [finalFolderName, path.join(currentPath || "", finalFolderName), "folder", now, now, null]
+    );
 
     // Optionally store subfolders in DB as well
     if (subFolderCount && Number(subFolderCount) > 0) {
       for (let i = 1; i <= subFolderCount; i++) {
         const subFolderName = `${finalFolderName}-${i}`;
-        await db.Metadata.create({
-          fileName: subFolderName,
-          filePath: path.join(currentPath || "", finalFolderName, subFolderName),
-          type: "folder"
-        });
+        await pool.execute(
+          "INSERT INTO metadata (fileName, filePath, type, createdAt, updatedAt, fileId) VALUES (?, ?, ?, ?, ?, ?)",
+          [subFolderName, path.join(currentPath || "", finalFolderName, subFolderName), "folder", now, now, null]
+        );
       }
     }
 
@@ -176,7 +264,7 @@ router.post("/create-folder", async (req, res) => {
 
 
 // Rename folder/file
-router.post("/rename", async (req, res) => {
+router.post("/rename", authMiddleware, checkFolderPermission('write'), async (req, res) => {
   const { oldName, newName, path: itemPath = "" } = req.body;
   const oldPath = path.join(STORAGE_PATH, itemPath, oldName);
   const newPath = path.join(STORAGE_PATH, itemPath, newName);
@@ -190,12 +278,10 @@ router.post("/rename", async (req, res) => {
     const oldRelativePath = path.join(itemPath, oldName);
     const newRelativePath = path.join(itemPath, newName);
 
-    const metadata = await db.Metadata.findOne({ where: { filePath: oldRelativePath } });
-    if (metadata) {
-      metadata.fileName = newName;
-      metadata.filePath = newRelativePath;
-      await metadata.save();
-    }
+    await pool.execute(
+      "UPDATE metadata SET fileName = ?, filePath = ? WHERE filePath = ?",
+      [newName, newRelativePath, oldRelativePath]
+    );
 
     res.json({ message: "Renamed successfully!" });
   } catch (error) {
@@ -205,7 +291,7 @@ router.post("/rename", async (req, res) => {
 
 
 // Delete folder/file
-router.post("/delete", async (req, res) => {
+router.post("/delete", authMiddleware, checkFolderPermission('write'), async (req, res) => {
   const { name, path: itemPath = "" } = req.body;
   const fullPath = path.join(STORAGE_PATH, itemPath, name);
 
@@ -215,7 +301,7 @@ router.post("/delete", async (req, res) => {
 
       // Delete from DB if it's a file
       const relativePath = path.join(itemPath, name);
-      await db.Metadata.destroy({ where: { filePath: relativePath } });
+      await pool.execute("DELETE FROM metadata WHERE filePath = ?", [relativePath]);
 
       return res.json({ message: "Deleted successfully!" });
     }
@@ -240,24 +326,27 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-router.post("/upload", upload.single("file"), async (req, res) => {
+router.post("/upload", authMiddleware, checkFolderPermission('write'), upload.single("file"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: "No file uploaded." });
   }
 
+  const currentPath = req.body.path || folder_path || "";
+
   try {
-    const relativePath = path.join(folder_path || "", req.file.originalname);
+    const relativePath = path.join(currentPath, req.file.originalname);
 
     // Store in DB
-    await db.Metadata.create({
-      fileName: req.file.originalname,
-      filePath: relativePath
-    });
+    const now = new Date();
+    await pool.execute(
+      "INSERT INTO metadata (fileName, filePath, type, createdAt, updatedAt, fileId) VALUES (?, ?, ?, ?, ?, ?)",
+      [req.file.originalname, relativePath, "file", now, now, null]
+    );
 
     res.json({
       message: "File uploaded and metadata saved successfully!",
       fileName: req.file.originalname,
-      currentPath: folder_path || "",
+      currentPath: currentPath,
     });
   } catch (error) {
     res.status(500).json({ message: "Error saving metadata.", error: error.toString() });
@@ -280,38 +369,38 @@ router.get("/search", async (req, res) => {
     }
 
     // ✅ Build search conditions
-    let whereClause = {};
+    let whereConditions = [];
+    let queryParams = [];
 
     if (currentPath) {
-      whereClause.filePath = { [Op.like]: `${currentPath}%` };  
+      whereConditions.push("filePath LIKE ?");
+      queryParams.push(`${currentPath}%`);
     }
 
     if (query) {
-      whereClause[Op.and] = [
-        {
-          [Op.or]: [
-            { fileName: { [Op.like]: `%${query}%` } },
-            { filePath: { [Op.like]: `%${query}%` } }
-          ]
-        },
-        currentPath ? { filePath: { [Op.like]: `${currentPath}%` } } : {}
-      ];
+      whereConditions.push("(fileName LIKE ? OR filePath LIKE ?)");
+      queryParams.push(`%${query}%`, `%${query}%`);
     }
 
     if (type) {
-      whereClause.type = type;
+      whereConditions.push("type = ?");
+      queryParams.push(type);
     }
 
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
     // ✅ Get total count
-    const totalCount = await db.Metadata.count({ where: whereClause });
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) as total FROM metadata ${whereClause}`,
+      queryParams
+    );
+    const totalCount = countResult[0].total;
 
     // ✅ Get filtered + paginated results
-    const results = await db.Metadata.findAll({
-      where: whereClause,
-      limit: parseInt(limit),
-      offset: (parseInt(page) - 1) * parseInt(limit),
-      order: [["createdAt", "DESC"]],
-    });
+    const [results] = await pool.execute(
+      `SELECT * FROM metadata ${whereClause} ORDER BY createdAt DESC LIMIT ? OFFSET ?`,
+      [...queryParams, parseInt(limit), (parseInt(page) - 1) * parseInt(limit)]
+    );
 
     // ✅ Format results
     const formattedResults = await Promise.all(
@@ -329,7 +418,7 @@ router.get("/search", async (req, res) => {
           type: metadata.type || (stats?.isDirectory() ? "folder" : "file"),
           path: metadata.filePath,
           createdAt: stats ? stats.birthtime : metadata.createdAt,
-          ...metadata.toJSON(),
+          ...metadata,
         };
       })
     );

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function AddUser() {
+export default function AddUser({ onUserAdded }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,6 +37,7 @@ export default function AddUser() {
         setPassword("");
         setRoleId("");
         setPosition("");
+        if (onUserAdded) onUserAdded();
       } else {
         setMessage(data.message || "Failed to add user.");
       }
@@ -47,54 +48,107 @@ export default function AddUser() {
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-md max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-4">Add User</h2>
-      {message && <div className="mb-4 text-red-600">{message}</div>}
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="User Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-xl"
-        />
-        <input
-          type="email"
-          placeholder="User Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-xl"
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-xl"
-        />
-        <select
-          value={roleId}
-          onChange={(e) => setRoleId(e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-xl"
-        >
-          <option value="">Select Role</option>
-          <option value="1">Admin</option>
-          <option value="2">User</option>
-          <option value="3">Viewer</option>
-        </select>
-        <input
-          type="text"
-          placeholder="Position (optional)"
-          value={position}
-          onChange={(e) => setPosition(e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-xl"
-        />
-        <button
-          type="submit"
-          className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition"
-        >
-          Add User
-        </button>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 max-w-md mx-auto">
+      <h2 className="text-xl font-semibold text-gray-900 mb-6">Add New User</h2>
+      {message && (
+        <div className={`mb-4 p-3 rounded-md ${
+          message.includes("successfully") || message.includes("added") 
+            ? "bg-green-50 text-green-800 border border-green-200" 
+            : "bg-red-50 text-red-800 border border-red-200"
+        }`}>
+          {message}
+        </div>
+      )}
+      <form className="space-y-6" onSubmit={handleSubmit}>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Full Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            placeholder="Enter full name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Email <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            placeholder="user@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Password <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="password"
+            placeholder="Enter secure password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Role <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={roleId}
+            onChange={(e) => setRoleId(e.target.value)}
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option value="">Select role</option>
+            <option value="1">Admin</option>
+            <option value="2">User</option>
+            <option value="3">Viewer</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Position (Optional)
+          </label>
+          <input
+            type="text"
+            placeholder="e.g., Software Engineer"
+            value={position}
+            onChange={(e) => setPosition(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+        <div className="flex justify-end space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={() => {
+              setName("");
+              setEmail("");
+              setPassword("");
+              setRoleId("");
+              setPosition("");
+              setMessage("");
+            }}
+            className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-200"
+          >
+            Reset
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition duration-200"
+          >
+            Add User
+          </button>
+        </div>
       </form>
     </div>
   );

@@ -1,17 +1,19 @@
 import axios from "axios";
 
+const BASE_URL = "http://localhost:5000";
+
+// Create API instance
 const API = axios.create({
-  baseURL: "http://localhost:5000",
+  baseURL: BASE_URL,
 });
 
-API.interceptors.request.use((req) => {
+// Add request interceptor to include token
+API.interceptors.request.use((config) => {
   const token = sessionStorage.getItem("token");
-
   if (token) {
-    req.headers.Authorization = `Bearer ${token}`;
+    config.headers.Authorization = `Bearer ${token}`;
   }
-
-  return req;
+  return config;
 });
 
 export default API;

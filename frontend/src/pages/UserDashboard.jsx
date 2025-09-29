@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import API from "../services/api.js";
 import Header from "../components/header";
-import { Menu } from "lucide-react";
+import UserFolderNavigation from "../components/UserFolderNavigation";
+import { Menu, Folder, FileText, Upload } from "lucide-react";
 import { getUserId } from "../services/authService.js";
 
 export default function UserDashboard() {
@@ -14,6 +15,10 @@ export default function UserDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [taskFiles, setTaskFiles] = useState({});
+  const [currentPath, setCurrentPath] = useState("");
+  const [selectedFolder, setSelectedFolder] = useState("");
+  const [folderFiles, setFolderFiles] = useState([]);
+  const [showFolderView, setShowFolderView] = useState(false);
 
   // Fetch user profile
   useEffect(() => {
@@ -69,6 +74,46 @@ export default function UserDashboard() {
       setFiles(res.data);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // Handle folder selection
+  const handleFolderSelect = async (folderPath) => {
+    setSelectedFolder(folderPath);
+    setCurrentPath(folderPath);
+    setShowFolderView(true);
+    
+    try {
+      const response = await API.get(`/api/folder/list?path=${encodeURIComponent(folderPath)}`);
+      setFolderFiles(response.data || []);
+    } catch (error) {
+      console.error('Error fetching folder contents:', error);
+      setFolderFiles([]);
+    }
+  };
+
+  // Handle file upload to selected folder
+  const handleFolderFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file || !selectedFolder) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("path", selectedFolder);
+
+    try {
+      await API.post("/api/folder/upload", formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      // Refresh folder contents
+      handleFolderSelect(selectedFolder);
+      alert("File uploaded successfully!");
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert(`File upload failed: ${error.response?.data?.message || "Unknown error"}`);
     }
   };
 
@@ -154,6 +199,15 @@ export default function UserDashboard() {
               }`}
             >
               Completed
+            </button>
+            <button
+              onClick={() => setActiveTab("folders")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                activeTab === "folders" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              <Folder className="w-4 h-4 mr-1 inline" />
+              My Folders
             </button>
           </div>
         </div>
@@ -313,12 +367,20 @@ export default function UserDashboard() {
                           Mark as Completed
                         </button>
                         {task.file_or_folder_name && (
-                          <button
-                            onClick={() => fetchTaskFiles(task.id, task.file_or_folder_name)}
-                            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-                          >
-                            View Directory Files
-                          </button>
+                          <>
+                            <button
+                              onClick={() => window.location.href = `/user-folder?folder=${encodeURIComponent(task.file_or_folder_name)}`}
+                              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                            >
+                              Access Folder
+                            </button>
+                            <button
+                              onClick={() => fetchTaskFiles(task.id, task.file_or_folder_name)}
+                              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                            >
+                              View Directory Files
+                            </button>
+                          </>
                         )}
                       </div>
                       {taskFiles[task.id] && (
@@ -371,6 +433,134 @@ export default function UserDashboard() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "folders" && (
+          <div className="flex h-full bg-gray-50">
+            {/* Folder Navigation Sidebar */}
+            <div className="w-1/3 min-w-80 bg-white border-r border-gray-200">
+              <UserFolderNavigation 
+                onFolderSelect={handleFolderSelect}
+                currentPath={currentPath}
+              />
+            </div>
+
+            {/* Folder Contents */}
+            <div className="flex-1 p-6">
+              {selectedFolder ? (
+                <div className="h-full flex flex-col">
+                  {/* Folder Header */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                          <Folder className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-bold text-gray-900">
+                            {selectedFolder.split('/').pop()}
+                          </h2>
+                          <p className="text-sm text-gray-500 font-mono">{selectedFolder}</p>
+                        </div>
+                      </div>
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() => handleFolderSelect(selectedFolder)}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Refresh
+                        </button>
+                        <label className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg cursor-pointer text-sm font-medium transition-colors flex items-center">
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload File
+                          <input
+                            type="file"
+                            className="hidden"
+                            onChange={handleFolderFileUpload}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Folder Contents */}
+                  <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    {folderFiles.length > 0 ? (
+                      <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+                        {folderFiles.map((item, index) => (
+                          <div key={index} className="p-4 hover:bg-gray-50 flex items-center group">
+                            <div className="flex-shrink-0 mr-4">
+                              {item.type === 'folder' ? (
+                                <Folder className="w-6 h-6 text-blue-500" />
+                              ) : (
+                                <FileText className="w-6 h-6 text-gray-500" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                <span className="capitalize">{item.type}</span>
+                                {item.createdAt && (
+                                  <span>• {new Date(item.createdAt).toLocaleDateString()}</span>
+                                )}
+                                {item.size && (
+                                  <span>• {(item.size / 1024).toFixed(1)} KB</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button className="text-gray-400 hover:text-gray-600 p-1">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-12 text-center text-gray-500">
+                        <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                          <Folder className="w-10 h-10 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Empty Folder</h3>
+                        <p className="text-sm mb-4">This folder doesn't contain any files yet</p>
+                        <label className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg cursor-pointer text-sm font-medium transition-colors">
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload your first file
+                          <input
+                            type="file"
+                            className="hidden"
+                            onChange={handleFolderFileUpload}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                      <Folder className="w-12 h-12 text-gray-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Welcome to Your Folders</h3>
+                    <p className="text-gray-500 mb-6 max-w-md">
+                      Select a folder from the sidebar to view its contents and upload files. 
+                      You can only access folders that have been assigned to you by the administrator.
+                    </p>
+                    <div className="flex items-center justify-center space-x-2 text-sm text-gray-400">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>Click on any folder to get started</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>

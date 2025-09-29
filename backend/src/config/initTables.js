@@ -25,7 +25,7 @@ async function initTables() {
     `);
 
     await connection.execute(`
-      INSERT IGNORE INTO roles (name) VALUES 
+      INSERT IGNORE INTO roles (name) VALUES
       ('Admin'), ('Developer'), ('Viewer')
     `);
 
@@ -71,6 +71,45 @@ async function initTables() {
         type ENUM('file','folder') DEFAULT 'file',
         fileId INT,
         INDEX(fileId)
+      )
+    `);
+
+    // ================= TASKS TABLE =================
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        task VARCHAR(255) NOT NULL,
+        file_or_folder_name VARCHAR(255),
+        message TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Add status column if not exists
+    try {
+      await connection.execute(`
+        ALTER TABLE tasks ADD COLUMN status ENUM('pending', 'accepted', 'rejected', 'completed') DEFAULT 'pending' AFTER message
+      `);
+    } catch (err) {
+      // Column might already exist, ignore error
+      if (!err.message.includes('Duplicate column name')) {
+        throw err;
+      }
+    }
+
+    // ================= USER_FILES TABLE =================
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS user_files (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        user_name VARCHAR(100) NOT NULL,
+        file_or_folder VARCHAR(255) NOT NULL,
+        permission ENUM('read', 'write', 'admin') DEFAULT 'read',
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
 

@@ -9,6 +9,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       defaultValue: "read"
     },
+  }, {
+    tableName: 'user_files',
+    timestamps: true
   });
 
   return UserFile;

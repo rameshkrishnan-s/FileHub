@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const FolderCreationModal = ({ isOpen, onClose, currentPath = "" }) => {
+const FolderCreationModal = ({ isOpen, onClose, onCreate, currentPath = "" }) => {
   const [customName, setCustomName] = useState("");
   const [companyCode, setCompanyCode] = useState("");
   const [year, setYear] = useState("");
@@ -41,19 +41,7 @@ const FolderCreationModal = ({ isOpen, onClose, currentPath = "" }) => {
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/folder/create-folder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          folderName: finalFolderName,
-          path: currentPath,
-          subFolderCount: Number(subFolderCount) || 0
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create folder");
-      }
+      await onCreate(finalFolderName, Number(subFolderCount) || 0);
 
       // Reset form after success
       setCustomName("");
@@ -64,6 +52,8 @@ const FolderCreationModal = ({ isOpen, onClose, currentPath = "" }) => {
       onClose();
     } catch (err) {
       console.error("Error creating folder:", err);
+      alert("Error creating folder: " + err.message);
+      onClose(); // Close modal even on error
     } finally {
       setLoading(false);
     }

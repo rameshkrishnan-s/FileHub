@@ -8,6 +8,8 @@ import Breadcrumb from "../components/dashboard/Breadcrumb.jsx";
 import ActionButtons from "../components/dashboard/ActionButtons.jsx";
 import { useNavigate } from 'react-router-dom';
 import ProfileMenu from "../components/dashboard/ProfileMenu";
+import { logout as authLogout } from "../services/authService";
+import API from "../services/api";
 
 
 
@@ -57,24 +59,18 @@ export default function Dashboard({ authToken, setPage }) {
   
   const navigate = useNavigate();
   const logout = () => {
-    localStorage.removeItem("authToken");
     localStorage.removeItem("currentPath");
     setCurrentPath(""); 
-    navigate("/"); // redirect to login
+    authLogout(); // Use the authService logout function
   };
 
  const fetchFiles = async () => {
   try {
-    const response = await fetch(
-      `http://localhost:5000/api/folder/list?path=${encodeURIComponent(currentPath)}`
-    );
-    const data = await response.json();
-    if (response.ok) {
+    const response = await API.get(`/api/folder/list?path=${encodeURIComponent(currentPath)}`);
+    if (response.data) {
       // Sort by createdAt descending (newest first)
-      const sortedFiles = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const sortedFiles = response.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setFiles(sortedFiles);
-    } else {
-      setError("Failed to load files.");
     }
   } catch (err) {
     setError("Error fetching files.");
@@ -84,11 +80,8 @@ export default function Dashboard({ authToken, setPage }) {
 
   const fetchCompanies = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/admin/company-codes"
-      );
-      const data = await response.json();
-      setCompanies(data.codes || []);
+      const response = await API.get("/api/admin/company-codes");
+      setCompanies(response.data.codes || []);
     } catch (err) {
       console.error("Error fetching companies:", err);
     }
@@ -96,56 +89,37 @@ export default function Dashboard({ authToken, setPage }) {
 
   const fetchAssemblyCodes = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/admin/assembly-codes"
-      );
-      const data = await response.json();
-      setAssemblyCodes(data.codes || []);
+      const response = await API.get("/api/admin/assembly-codes");
+      setAssemblyCodes(response.data.codes || []);
     } catch (err) {
       console.error("Error fetching assembly codes:", err);
     }
   };
 
-  const addFolder = async (year, companyCode, assemblyCode) => {
-    const folderName =
-      companyCode && assemblyCode
-        ? `${year}-${companyCode}-${assemblyCode}`
-        : year;
-
+  const addFolder = async (folderName, subFolderCount = 0) => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/folder/create-folder",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ folderName, path: currentPath }),
-        }
-      );
-
-      if (response.ok) {
-        await fetchFiles();
-      } else {
-        const data = await response.json();
-        alert(`Folder creation failed: ${data.message}`);
-      }
+      await API.post("/api/folder/create-folder", {
+        folderName,
+        path: currentPath,
+        subFolderCount,
+      });
+      await fetchFiles();
     } catch (error) {
       console.error("Error during folder creation:", error);
-      alert("An unexpected error occurred while creating the folder.");
+      alert(`Folder creation failed: ${error.response?.data?.message || "An unexpected error occurred while creating the folder."}`);
     }
   };
 
   const deleteItem = async (name) => {
     if (window.confirm("Are you sure you want to delete this item?")) {
-      const response = await fetch("http://localhost:5000/api/folder/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, path: currentPath }),
-      });
-
-      if (response.ok) {
+      try {
+        await API.post("/api/folder/delete", {
+          name,
+          path: currentPath,
+        });
         fetchFiles();
-      } else {
-        alert("Failed to delete item.");
+      } catch (error) {
+        alert(`Failed to delete item: ${error.response?.data?.message || "Unknown error"}`);
       }
     }
   };
@@ -156,16 +130,15 @@ export default function Dashboard({ authToken, setPage }) {
   };
 
   const handleRename = async (oldName, newName) => {
-    const response = await fetch("http://localhost:5000/api/folder/rename", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ oldName, newName, path: currentPath }),
-    });
-
-    if (response.ok) {
+    try {
+      await API.post("/api/folder/rename", {
+        oldName,
+        newName,
+        path: currentPath,
+      });
       fetchFiles();
-    } else {
-      alert("Failed to rename.");
+    } catch (error) {
+      alert(`Failed to rename: ${error.response?.data?.message || "Unknown error"}`);
     }
   };
 
@@ -195,23 +168,15 @@ export default function Dashboard({ authToken, setPage }) {
         limit: 20,
       });
 
-      const response = await fetch(
-        `http://localhost:5000/api/folder/search?${queryParams.toString()}`
-      );
+      const response = await API.get(`/api/folder/search?${queryParams.toString()}`);
+      const data = response.data;
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setSearchResults(data.results);
-        setTotalPages(data.pagination.totalPages);
-        setCurrentPage(data.pagination.page);
-      } else {
-        setSearchError(data.message || "Error searching files");
-        setSearchResults([]);
-      }
+      setSearchResults(data.results);
+      setTotalPages(data.pagination.totalPages);
+      setCurrentPage(data.pagination.page);
     } catch (error) {
       console.error("Error searching files:", error);
-      setSearchError("Error searching files");
+      setSearchError(error.response?.data?.message || "Error searching files");
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -239,16 +204,16 @@ export default function Dashboard({ authToken, setPage }) {
     formData.append("file", file);
     formData.append("path", currentPath);
 
-    const response = await fetch("http://localhost:5000/api/folder/upload", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (response.ok) {
+    try {
+      await API.post("/api/folder/upload", formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       fetchFiles();
       alert("File uploaded successfully!");
-    } else {
-      alert("File upload failed.");
+    } catch (error) {
+      alert(`File upload failed: ${error.response?.data?.message || "Unknown error"}`);
     }
   };
 
@@ -281,22 +246,12 @@ export default function Dashboard({ authToken, setPage }) {
           ? `${currentPath}/${item.name}`
           : item.name;
 
-        const response = await fetch(
-          `http://localhost:5000/api/folder/open?filePath=${encodeURIComponent(
-            filePath
-          )}`
-        );
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to open file");
-        }
-
-        console.log("File opened successfully:", data);
+        const response = await API.get(`/api/folder/open?filePath=${encodeURIComponent(filePath)}`);
+        console.log("File opened successfully:", response.data);
       } catch (error) {
         console.error("Error opening file:", error);
         alert(
-          `Error opening file: ${error.message}\n\nPlease check the console for more details.`
+          `Error opening file: ${error.response?.data?.message || error.message}\n\nPlease check the console for more details.`
         );
       } finally {
         setIsSearching(false);

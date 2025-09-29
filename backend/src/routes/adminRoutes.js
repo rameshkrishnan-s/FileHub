@@ -1,6 +1,8 @@
 const express = require("express");
 const mysql = require("mysql2/promise");
 
+const db = require("../models");
+
 const router = express.Router();
 
 const pool = mysql.createPool({
@@ -270,14 +272,15 @@ router.get("/profile", async (req, res) => {
 router.post("/allocate-task", async (req, res) => {
   const { user_id, task, file_or_folder_name, message, permission } = req.body;
 
-  if (!user_id || !task) {
+  const parsedUserId = parseInt(user_id);
+  if (!parsedUserId || !task) {
     return res.status(400).json({ message: "User ID and task are required!" });
   }
 
   const conn = await pool.getConnection();
   try {
     // ✅ Check if user exists
-    const [user] = await conn.execute("SELECT id, name FROM users WHERE id = ?", [user_id]);
+    const [user] = await conn.execute("SELECT id, name FROM users WHERE id = ?", [parsedUserId]);
     if (user.length === 0) {
       return res.status(404).json({ message: "User not found!" });
     }
@@ -287,13 +290,12 @@ router.post("/allocate-task", async (req, res) => {
     // ✅ Insert task with status 'pending'
     await conn.execute(
       "INSERT INTO tasks (user_id, task, file_or_folder_name, message, status) VALUES (?, ?, ?, ?, 'pending')",
-      [user_id, task, file_or_folder_name || null, message || null]
+      [parsedUserId, task, file_or_folder_name || null, message || null]
     );
 
     // ✅ Update UserFile table using Sequelize
-    const { UserFile } = require("../models"); // adjust path
-    await UserFile.upsert({
-      user_id,
+    await db.UserFile.upsert({
+      user_id: parsedUserId,
       user_name: userName,
       file_or_folder: file_or_folder_name || "N/A",
       permission: permission || "read", // default to "read"
@@ -336,8 +338,7 @@ router.get("/my-tasks/:user_id", async (req, res) => {
     const [tasks] = await conn.execute(taskQuery, taskParams);
 
     // ✅ Get file/folder permissions from Sequelize
-    const { UserFile } = require("../models"); // adjust path
-    const userFiles = await UserFile.findAll({ where: { user_id } });
+    const userFiles = await db.UserFile.findAll({ where: { user_id } });
 
     res.json({
       user: user[0],
@@ -374,6 +375,20 @@ router.put("/update-task-status/:task_id", async (req, res) => {
 
     await conn.execute("UPDATE tasks SET status = ? WHERE id = ?", [status, task_id]);
 
+    // If task is accepted, grant write permission to the folder
+    if (status === 'accepted' && task[0].file_or_folder_name) {
+      // Fetch user name
+      const [user] = await conn.execute("SELECT name FROM users WHERE id = ?", [task[0].user_id]);
+      const userName = user.length > 0 ? user[0].name : 'Unknown';
+
+      await db.UserFile.upsert({
+        user_id: task[0].user_id,
+        user_name: userName,
+        file_or_folder: task[0].file_or_folder_name,
+        permission: 'write'
+      });
+    }
+
     res.json({ message: "Task status updated successfully!" });
   } catch (err) {
     res.status(500).json({ message: "Error updating task status.", error: err.toString() });
@@ -391,6 +406,27 @@ router.get("/files/folder/:folderName", async (req, res) => {
     res.json({ files });
   } catch (err) {
     res.status(500).json({ message: "Error fetching files.", error: err.toString() });
+  } finally {
+    conn.release();
+  }
+});
+
+// 📌 Get all tasks for admin
+router.get("/all-tasks", async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const [tasks] = await conn.execute(`
+      SELECT t.id, t.task, t.file_or_folder_name, t.message, t.status, t.created_at, 
+             u.name as user_name, u.email, r.name as role
+      FROM tasks t
+      JOIN users u ON t.user_id = u.id
+      JOIN roles r ON u.role_id = r.id
+      ORDER BY t.created_at DESC
+    `);
+
+    res.json({ tasks });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching all tasks.", error: err.toString() });
   } finally {
     conn.release();
   }

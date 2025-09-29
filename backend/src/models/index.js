@@ -11,6 +11,15 @@ const sequelize = new Sequelize(
   }
 );
 
+// Authenticate connection
+sequelize.authenticate()
+  .then(() => {
+    console.log("✅ Database connected");
+  })
+  .catch((err) => {
+    console.error("❌ Database connection error:", err);
+  });
+
 const db = {};
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
@@ -31,14 +40,6 @@ Object.keys(db).forEach((modelName) => {
   }
 });
 
-// Sync database
-db.sequelize
-  .sync({ alter: true }) // auto create/alter tables
-  .then(() => {
-    console.log("✅ Tables synced with DB");
-  })
-  .catch((err) => {
-    console.error("❌ Error syncing tables:", err);
-  });
+// Tables are created by initTables.js, no need to sync here
 
 module.exports = db;

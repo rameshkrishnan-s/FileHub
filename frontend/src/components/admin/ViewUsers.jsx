@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { FileText, Plus, User, X } from "lucide-react";
-import API from "../../services/api.js";
+import { Plus, Users, X, FileText } from "lucide-react";
+import createAPI from "../../services/api.js";
+const API = createAPI();
+import AddUser from "./AddUser";
 
-export default function Tasks() {
+export default function ViewUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [allTasks, setAllTasks] = useState([]);
 
-  // form state
+  // form state for task
   const [taskData, setTaskData] = useState({
     task: "",
     file_or_folder_name: "",
@@ -17,10 +19,8 @@ export default function Tasks() {
     permission: "read",
   });
 
-  // fetch users and tasks when page loads
   useEffect(() => {
     fetchUsers();
-    fetchAllTasks();
   }, []);
 
   const fetchUsers = async () => {
@@ -30,17 +30,9 @@ export default function Tasks() {
       setUsers(res.data.users || []);
     } catch (err) {
       console.error("Error fetching users:", err);
+      alert("Failed to fetch users.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchAllTasks = async () => {
-    try {
-      const res = await API.get("/api/admin/all-tasks");
-      setAllTasks(res.data.tasks || []);
-    } catch (err) {
-      console.error("Error fetching all tasks:", err);
     }
   };
 
@@ -52,14 +44,14 @@ export default function Tasks() {
       message: "",
       permission: "read",
     });
-    setShowModal(true);
+    setShowTaskModal(true);
   };
 
   const handleUserSelect = (user) => {
     setSelectedUser(user);
   };
 
-  const handleChange = (e) => {
+  const handleTaskChange = (e) => {
     setTaskData({ ...taskData, [e.target.name]: e.target.value });
   };
 
@@ -85,14 +77,13 @@ export default function Tasks() {
 
       if (res.status === 200) {
         alert(res.data.message);
-        setShowModal(false);
+        setShowTaskModal(false);
         setTaskData({
           task: "",
           file_or_folder_name: "",
           message: "",
           permission: "read",
         });
-        fetchAllTasks(); // Refresh the tasks list
       } else {
         alert(res.data.message || "Failed to allocate task.");
       }
@@ -107,16 +98,25 @@ export default function Tasks() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center">
-          <FileText className="h-6 w-6 text-indigo-600 mr-2" />
-          <h2 className="text-2xl font-semibold text-gray-900">Tasks</h2>
+          <Users className="h-6 w-6 text-indigo-600 mr-2" />
+          <h2 className="text-2xl font-semibold text-gray-900">Users</h2>
         </div>
-        <button
-          onClick={openTaskModal}
-          className="mt-4 sm:mt-0 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200 flex items-center"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Assign New Task
-        </button>
+        <div className="flex space-x-2 mt-4 sm:mt-0">
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200 flex items-center"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add New User
+          </button>
+          <button
+            onClick={openTaskModal}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition duration-200 flex items-center"
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Assign Task
+          </button>
+        </div>
       </div>
 
       {/* Modal */}
@@ -124,9 +124,29 @@ export default function Tasks() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Assign New Task</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Add New User</h3>
               <button
                 onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <AddUser onUserAdded={() => { fetchUsers(); setShowModal(false); }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Modal */}
+      {showTaskModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Assign New Task</h3>
+              <button
+                onClick={() => setShowTaskModal(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X className="h-6 w-6" />
@@ -156,7 +176,7 @@ export default function Tasks() {
                       name="task"
                       placeholder="Task Description *"
                       value={taskData.task}
-                      onChange={handleChange}
+                      onChange={handleTaskChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                     />
 
@@ -165,7 +185,7 @@ export default function Tasks() {
                       name="file_or_folder_name"
                       placeholder="File/Folder Name *"
                       value={taskData.file_or_folder_name}
-                      onChange={handleChange}
+                      onChange={handleTaskChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                     />
 
@@ -173,7 +193,7 @@ export default function Tasks() {
                       name="message"
                       placeholder="Additional Message"
                       value={taskData.message}
-                      onChange={handleChange}
+                      onChange={handleTaskChange}
                       rows={2}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                     />
@@ -181,7 +201,7 @@ export default function Tasks() {
                     <select
                       name="permission"
                       value={taskData.permission}
-                      onChange={handleChange}
+                      onChange={handleTaskChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="read">Read</option>
@@ -191,7 +211,7 @@ export default function Tasks() {
 
                     <div className="flex justify-end space-x-2">
                       <button
-                        onClick={() => setShowModal(false)}
+                        onClick={() => setShowTaskModal(false)}
                         className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
                       >
                         Cancel
@@ -211,18 +231,18 @@ export default function Tasks() {
         </div>
       )}
 
-      {/* Tasks List */}
+      {/* Users List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-indigo-600 border-t-transparent mx-auto mb-3"></div>
-            <p className="text-gray-600">Loading tasks...</p>
+            <p className="text-gray-600">Loading users...</p>
           </div>
-        ) : allTasks.length === 0 ? (
+        ) : users.length === 0 ? (
           <div className="text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks yet</h3>
-            <p className="text-gray-500">Assign your first task using the button above.</p>
+            <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No users yet</h3>
+            <p className="text-gray-500">Add your first user using the button above.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -230,31 +250,27 @@ export default function Tasks() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File/Folder</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {allTasks.map((task) => (
-                  <tr key={task.id} className="hover:bg-gray-50 transition-colors duration-200">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{task.id}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{task.task}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{task.file_or_folder_name || "N/A"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.user_name}</td>
+                {users.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-200">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.position || "N/A"}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        task.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        user.role === 'Admin' ? 'bg-indigo-100 text-indigo-800' :
+                        user.role === 'User' ? 'bg-blue-100 text-blue-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {task.status || 'pending'}
+                        {user.role}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(task.created_at).toLocaleDateString()}
                     </td>
                   </tr>
                 ))}
