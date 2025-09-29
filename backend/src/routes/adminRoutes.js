@@ -200,9 +200,10 @@ router.post("/add-user", async (req, res) => {
 
     // Insert new user
     await conn.execute(
-      "INSERT INTO users (name, email, password, role_id, position) VALUES (?, ?, ?, ?, ?)",
-      [name, email, hashedPassword, role_id, position || null]
-    );
+  "INSERT INTO users (name, email, password, role_id, position, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+  [name, email, hashedPassword, role_id, position || null]
+);
+
 
     res.json({ message: "User created successfully!" });
   } catch (err) {
