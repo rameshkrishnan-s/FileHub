@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api.js";
-import Header from "../components/header";
-import { getUserId, logout } from "../services/authService.js";
+import { getUserId } from "../services/authService.js";
 import { User, LogOut } from "lucide-react";
 
 export default function ProfilePage() {
@@ -24,7 +23,12 @@ export default function ProfilePage() {
   }, [navigate]);
 
   const handleLogout = () => {
-    logout();
+    sessionStorage.clear(); // Clear sessionStorage
+    navigate("/"); // redirect after logout
+  };
+
+  const goBackToAdmin = () => {
+    navigate("/admin"); // Redirect to /admin
   };
 
   if (!user) {
@@ -40,10 +44,9 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
-      <Header />
-
-      <div className="max-w-4xl mx-auto p-6 pt-24">
+      <div className="max-w-4xl mx-auto p-6 pt-16">
         <div className="bg-white rounded-2xl shadow-xl p-8">
+          {/* Profile Header */}
           <div className="flex items-center mb-8">
             <User className="w-16 h-16 text-blue-600 mr-4" />
             <div>
@@ -52,38 +55,54 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          {/* Profile Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-gray-50 p-6 rounded-lg">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">Personal Information</h2>
+              <h2 className="text-xl font-semibold mb-4 text-gray-800">
+                Personal Information
+              </h2>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-600">Name</label>
+                  <label className="block text-sm font-medium text-gray-600">
+                    Name
+                  </label>
                   <p className="text-lg text-gray-800">{user.name}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600">Email</label>
+                  <label className="block text-sm font-medium text-gray-600">
+                    Email
+                  </label>
                   <p className="text-lg text-gray-800">{user.email}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600">Position</label>
-                  <p className="text-lg text-gray-800">{user.position || "Not specified"}</p>
+                  <label className="block text-sm font-medium text-gray-600">
+                    Position
+                  </label>
+                  <p className="text-lg text-gray-800">
+                    {user.position || "Not specified"}
+                  </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600">Role</label>
+                  <label className="block text-sm font-medium text-gray-600">
+                    Role
+                  </label>
                   <p className="text-lg text-gray-800">{user.role}</p>
                 </div>
               </div>
             </div>
 
+            {/* Account Actions */}
             <div className="bg-gray-50 p-6 rounded-lg">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">Account Actions</h2>
+              <h2 className="text-xl font-semibold mb-4 text-gray-800">
+                Account Actions
+              </h2>
               <div className="space-y-4">
                 <button
-                  onClick={() => navigate(-1)}
+                  onClick={goBackToAdmin}
                   className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center"
                 >
                   <User className="w-5 h-5 mr-2" />
-                  Back to Dashboard
+                  Back to Admin
                 </button>
                 <button
                   onClick={handleLogout}
