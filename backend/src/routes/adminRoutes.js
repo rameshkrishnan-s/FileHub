@@ -284,9 +284,9 @@ router.post("/allocate-task", async (req, res) => {
 
     const userName = user[0].name;
 
-    // ✅ Insert task
+    // ✅ Insert task with status 'pending'
     await conn.execute(
-      "INSERT INTO tasks (user_id, task, file_or_folder_name, message) VALUES (?, ?, ?, ?)",
+      "INSERT INTO tasks (user_id, task, file_or_folder_name, message, status) VALUES (?, ?, ?, ?, 'pending')",
       [user_id, task, file_or_folder_name || null, message || null]
     );
 
@@ -310,6 +310,7 @@ router.post("/allocate-task", async (req, res) => {
 // 📌 Get tasks and file permissions by user_id
 router.get("/my-tasks/:user_id", async (req, res) => {
   const { user_id } = req.params;
+  const { status } = req.query;
 
   if (!user_id) {
     return res.status(400).json({ message: "User ID is required!" });
@@ -323,11 +324,16 @@ router.get("/my-tasks/:user_id", async (req, res) => {
       return res.status(404).json({ message: "User not found!" });
     }
 
-    // ✅ Get tasks for this user
-    const [tasks] = await conn.execute(
-      "SELECT id, task, file_or_folder_name, message, created_at FROM tasks WHERE user_id = ?",
-      [user_id]
-    );
+    // ✅ Get tasks for this user with status filter
+    let taskQuery = "SELECT id, task, file_or_folder_name, message, status, created_at FROM tasks WHERE user_id = ?";
+    let taskParams = [user_id];
+    
+    if (status) {
+      taskQuery += " AND status = ?";
+      taskParams.push(status);
+    }
+
+    const [tasks] = await conn.execute(taskQuery, taskParams);
 
     // ✅ Get file/folder permissions from Sequelize
     const { UserFile } = require("../models"); // adjust path

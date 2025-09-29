@@ -25,19 +25,11 @@ export default function Login() {
       const res = await API.post("/api/auth/login", { email, password });
 
       // Save login details to localStorage
-      // localStorage
-localStorage.clear();
-
-// sessionStorage
-sessionStorage.clear();
-
-     // Save login details to sessionStorage
-      sessionStorage.setItem("token", res.data.token);
-      sessionStorage.setItem("id", res.data.id); 
-      sessionStorage.setItem("role", res.data.role);
-      sessionStorage.setItem("name", res.data.name);
-      sessionStorage.setItem("userEmail", res.data.email); // <-- Added for profile
- // <-- Added for profile
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("id", res.data.id); 
+      localStorage.setItem("role", res.data.role);
+      localStorage.setItem("name", res.data.name);
+      localStorage.setItem("userEmail", res.data.email); // <-- Added for profile
 
       if (res.data.role === 1) navigate("/admin");
       else if (res.data.role === 2) navigate("/user");
