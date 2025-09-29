@@ -2,26 +2,55 @@ import React, { useState, useEffect } from "react";
 import API from "../services/api.js";
 import Header from "../components/header";
 import { Menu } from "lucide-react";
+import { getUserId } from "../services/authService.js";
 
 export default function UserDashboard() {
   const [files, setFiles] = useState([]);
   const [file, setFile] = useState(null);
   const [user, setUser] = useState(null);
-  const [showProfile, setShowProfile] = useState(false);
-  const [activeTab, setActiveTab] = useState("tasks");
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [taskFiles, setTaskFiles] = useState({});
 
-  // Fetch files
+  // Fetch user profile
+  useEffect(() => {
+    const userId = getUserId();
+    if (userId) {
+      API.get(`/api/admin/profile?id=${userId}`)
+        .then((res) => setUser(res.data.user))
+        .catch((err) => console.error(err));
+    }
+  }, []);
+
+  // Fetch tasks based on active tab
+  const fetchTasks = async (status = null) => {
+    setLoading(true);
+    const userId = getUserId();
+    if (userId) {
+      try {
+        const url = status
+          ? `/api/admin/my-tasks/${userId}?status=${status}`
+          : `/api/admin/my-tasks/${userId}`;
+        const res = await API.get(url);
+        setTasks(res.data.tasks);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchTasks(activeTab === "all" ? null : activeTab);
+  }, [activeTab]);
+
+  // Fetch all files
   useEffect(() => {
     API.get("/files")
       .then((res) => setFiles(res.data))
-      .catch((err) => console.error(err));
-  }, []);
-
-  // Fetch user details
-  useEffect(() => {
-    API.get("/user/profile")
-      .then((res) => setUser(res.data))
       .catch((err) => console.error(err));
   }, []);
 
@@ -43,65 +72,104 @@ export default function UserDashboard() {
     }
   };
 
+  const updateTaskStatus = async (taskId, status) => {
+    try {
+      await API.put(`/api/admin/update-task-status/${taskId}`, { status });
+      fetchTasks(activeTab === "all" ? null : activeTab);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchTaskFiles = async (taskId, folder) => {
+    try {
+      const res = await API.get(`/api/admin/files/folder/${folder}`);
+      setTaskFiles((prev) => ({ ...prev, [taskId]: res.data.files }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "pending":
+        return (
+          <span className="px-2 py-1 text-xs bg-yellow-200 text-yellow-800 rounded">
+            Pending
+          </span>
+        );
+      case "accepted":
+        return (
+          <span className="px-2 py-1 text-xs bg-green-200 text-green-800 rounded">
+            Accepted
+          </span>
+        );
+      case "rejected":
+        return (
+          <span className="px-2 py-1 text-xs bg-red-200 text-red-800 rounded">
+            Rejected
+          </span>
+        );
+      case "completed":
+        return (
+          <span className="px-2 py-1 text-xs bg-blue-200 text-blue-800 rounded">
+            Completed
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col">
       {/* Main Company Header */}
       <Header />
 
-      {/* Hamburger Menu and Dashboard Title (Fixed and positioned below the header) */}
-      <div className="fixed top-[108px] left-0 p-4 flex items-center bg-white border-b border-gray-200 shadow z-50 w-full">
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="text-gray-700 focus:outline-none"
-        >
-          <Menu size={28} />
-        </button>
-        <h1 className="ml-4 text-xl font-semibold">User Dashboard</h1>
+      {/* Top Nav Bar with Task Tabs */}
+      <div className="fixed top-[108px] left-0 p-4 bg-white border-b border-gray-200 shadow z-50 w-full">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="text-gray-700 focus:outline-none mr-4"
+            >
+              <Menu size={28} />
+            </button>
+            <h1 className="text-xl font-semibold">User Dashboard</h1>
+          </div>
+          <div className="flex space-x-2">
+            {["all", "pending", "accepted", "completed"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  activeTab === tab
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)} Tasks
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-30 left-0 h-full w-64 bg-white border-r border-gray-200 shadow-lg p-4 transform transition-transform duration-300 z-40 pt-16
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed top-[108px] left-0 h-full w-64 bg-white border-r border-gray-200 shadow-lg p-4 transform transition-transform duration-300 z-40 pt-16 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
-        <h2 className="text-lg font-bold mb-4"> Menu</h2>
+        <h2 className="text-lg font-bold mb-4">Menu</h2>
         <ul className="space-y-2">
-          <li>
-            <button
-              onClick={() => setActiveTab("tasks")}
-              className={`w-full text-left px-5 py-2 rounded-lg ${
-                activeTab === "tasks" ? "bg-blue-600 text-white" : "hover:bg-gray-100"
-              }`}
-            >
-               Tasks
-            </button>
-          </li>
-          <li>
-            <button
-              onClick={() => setActiveTab("pending")}
-              className={`w-full text-left px-3 py-2 rounded-lg ${
-                activeTab === "pending" ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-              }`}
-            >
-               Pending Works
-            </button>
-          </li>
-          <li>
-            <button
-              onClick={() => setActiveTab("completed")}
-              className={`w-full text-left px-3 py-2 rounded-lg ${
-                activeTab === "completed" ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-              }`}
-            >
-               Completed Works
-            </button>
-          </li>
           <li>
             <button
               onClick={() => setShowProfile(!showProfile)}
               className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100"
             >
-               Profile
+              Profile
             </button>
           </li>
         </ul>
@@ -113,7 +181,7 @@ export default function UserDashboard() {
           sidebarOpen ? "ml-64" : "ml-0"
         } pt-36`}
       >
-        {/* Profile */}
+        {/* Profile Section */}
         {showProfile && user && (
           <div className="bg-gray-100 p-4 rounded mb-4 shadow">
             <h2 className="text-xl font-semibold mb-2">Profile Details</h2>
@@ -126,60 +194,103 @@ export default function UserDashboard() {
             <p>
               <strong>Role:</strong> {user.role}
             </p>
-          </div>
-        )}
-
-        {/* Content based on active tab */}
-        {activeTab === "tasks" && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4"> Your Tasks</h2>
-            <p className="text-gray-600 mb-4 ">
-              Upload, view, and manage your assigned tasks here.
+            <p>
+              <strong>Position:</strong> {user.position}
             </p>
-            <div className="mb-4">
-              <label className="bg-blue-500 text-white p-2 rounded cursor-pointer">
-                Choose File
-                <input
-                  type="file"
-                  onChange={(e) => setFile(e.target.files[0])}
-                  className="hidden"
-                />
-              </label>
-              <button
-                onClick={handleUpload}
-                className="bg-green-500 text-white p-2 rounded ml-2"
-              >
-                Upload
-              </button>
+          </div>
+        )}
+
+        {/* Task Sections */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">
+            {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Tasks
+          </h2>
+          {loading ? (
+            <p>Loading...</p>
+          ) : (
+            <div className="space-y-4">
+              {tasks.length > 0 ? (
+                tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="bg-white p-4 rounded-lg shadow border border-gray-200"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-lg">{task.task}</h3>
+                      {getStatusBadge(task.status)}
+                    </div>
+                    {task.file_or_folder_name && (
+                      <p className="text-sm text-gray-600">
+                        <strong>File/Folder:</strong> {task.file_or_folder_name}
+                      </p>
+                    )}
+                    {task.message && (
+                      <p className="mt-2 text-gray-700">{task.message}</p>
+                    )}
+                    <p className="text-xs text-gray-400 mt-2">
+                      Assigned on:{" "}
+                      {new Date(task.created_at).toLocaleDateString()}
+                    </p>
+
+                    {/* Actions based on tab */}
+                    {activeTab === "pending" && (
+                      <div className="mt-4 flex space-x-2">
+                        <button
+                          onClick={() => updateTaskStatus(task.id, "accepted")}
+                          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => updateTaskStatus(task.id, "rejected")}
+                          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+
+                    {activeTab === "accepted" && (
+                      <div className="mt-4 flex space-x-2">
+                        <button
+                          onClick={() => updateTaskStatus(task.id, "completed")}
+                          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                        >
+                          Mark as Completed
+                        </button>
+                        {task.file_or_folder_name && (
+                          <button
+                            onClick={() =>
+                              fetchTaskFiles(task.id, task.file_or_folder_name)
+                            }
+                            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                          >
+                            View Directory Files
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {taskFiles[task.id] && (
+                      <div className="mt-4">
+                        <h4 className="font-semibold">
+                          Files in {task.file_or_folder_name}:
+                        </h4>
+                        <ul className="list-disc pl-5">
+                          {taskFiles[task.id].map((file) => (
+                            <li key={file.id}>{file.originalName}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p>You have no {activeTab} tasks.</p>
+              )}
             </div>
-            <h3 className="text-lg font-semibold mb-2">Uploaded Files</h3>
-            <ul className="list-disc ml-6">
-              {files.map((f) => (
-                <li key={f.id}>{f.filename}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {activeTab === "pending" && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4"> Pending Works</h2>
-            <ul className="list-disc ml-6">
-              <li>Approval needed for uploaded file XYZ.pdf</li>
-              <li>Waiting for review of ABC.docx</li>
-            </ul>
-          </div>
-        )}
-
-        {activeTab === "completed" && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4"> Completed Works</h2>
-            <ul className="list-disc ml-6">
-              <li>Final report submitted ✔</li>
-              <li>Project documentation approved ✔</li>
-            </ul>
-          </div>
-        )}
+          )}
+        </div>
       </main>
     </div>
   );

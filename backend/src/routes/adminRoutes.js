@@ -345,5 +345,83 @@ router.get("/my-tasks/:user_id", async (req, res) => {
   }
 });
 
+router.put("/update-task-status/:task_id", async (req, res) => {
+  const { task_id } = req.params;
+  const { status } = req.body;
+
+  if (!task_id || !status) {
+    return res.status(400).json({ message: "Task ID and status are required!" });
+  }
+
+  if (!['pending', 'accepted', 'rejected', 'completed'].includes(status)) {
+    return res.status(400).json({ message: "Invalid status!" });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    // Check if task exists and belongs to user (assuming auth middleware provides user_id)
+    const [task] = await conn.execute("SELECT * FROM tasks WHERE id = ?", [task_id]);
+    if (task.length === 0) {
+      return res.status(404).json({ message: "Task not found!" });
+    }
+
+    await conn.execute("UPDATE tasks SET status = ? WHERE id = ?", [status, task_id]);
+
+    res.json({ message: "Task status updated successfully!" });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating task status.", error: err.toString() });
+  } finally {
+    conn.release();
+  }
+});
+
+// Get files by folder (assuming folder is extraCode)
+router.get("/files/folder/:folderName", async (req, res) => {
+  const { folderName } = req.params;
+  const conn = await pool.getConnection();
+  try {
+    const [files] = await conn.execute("SELECT * FROM files WHERE extraCode = ?", [folderName]);
+    res.json({ files });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching files.", error: err.toString() });
+  } finally {
+    conn.release();
+  }
+}); 
+// 📌 Get files/folders assigned to a user
+router.get("/my-files/:user_id", async (req, res) => {
+  const { user_id } = req.params;
+
+  if (!user_id) {
+    return res.status(400).json({ message: "User ID is required!" });
+  }
+
+  try {
+    const { UserFile } = require("../models"); // Sequelize model
+
+    // ✅ Fetch user files from DB
+    const userFiles = await UserFile.findAll({
+      where: { user_id },
+      attributes: ["file_or_folder", "permission", "user_name", "updatedAt"],
+    });
+
+    if (!userFiles || userFiles.length === 0) {
+      return res.status(404).json({ message: "No files found for this user." });
+    }
+
+    res.json({
+      user_id,
+      files: userFiles,
+    });
+  } catch (err) {
+    console.error("Error fetching user files:", err);
+    res.status(500).json({
+      message: "Error fetching user files.",
+      error: err.toString(),
+    });
+  }
+});
+
+
 // Export CommonJS
 module.exports = router;

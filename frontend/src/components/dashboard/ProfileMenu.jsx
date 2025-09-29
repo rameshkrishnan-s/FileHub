@@ -9,7 +9,7 @@ export default function ProfileMenu({ authToken }) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const id = localStorage.getItem("id"); // Ensure ID is set after login
+        const id = sessionStorage.getItem("id"); // Ensure ID is set after login
         if (!id) return;
 
         const res = await fetch(`http://localhost:5000/api/admin/profile?id=${encodeURIComponent(id)}`, {
