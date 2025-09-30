@@ -10,10 +10,12 @@ import { useNavigate } from 'react-router-dom';
 import ProfileMenu from "../components/dashboard/ProfileMenu";
 import { logout as authLogout } from "../services/authService";
 import API from "../services/api";
+import { ArrowLeft } from "lucide-react";
 
 
 
-export default function Dashboard({ authToken, setPage }) {
+export default function Dashboard({ authToken, setPage, hideHeader = false }) {
+  const navigate = useNavigate();
   const [files, setFiles] = useState([]);
   const [currentPath, setCurrentPath] = useState(() => {
     const storedPath = localStorage.getItem("currentPath");
@@ -56,8 +58,6 @@ export default function Dashboard({ authToken, setPage }) {
     setAssemblyCodeFilter("");
   }, [currentPath]);
 
-  
-  const navigate = useNavigate();
   const logout = () => {
     localStorage.removeItem("currentPath");
     setCurrentPath(""); 
@@ -360,22 +360,26 @@ export default function Dashboard({ authToken, setPage }) {
       `}</style>
 
       <div className="dashboard-container">
-        <Header />
+        {!hideHeader && <Header />}
 
         {/* Top Bar */}
-        <div className="top-bar">
-          <h1>Admin Panel</h1>
-          <div className="top-buttons">
-  <ProfileMenu authToken={authToken} />
-  <button onClick={goToAdminPage} className="btn btn-green">
-    Admin
-  </button>
-  <button onClick={logout} className="btn btn-red">
-    Logout
-  </button>
-</div>
-
-        </div>
+        {!hideHeader && (
+          <div className="top-bar">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/admin')}
+                className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <ArrowLeft size={20} />
+                Back to Admin Dashboard
+              </button>
+              <h1>File Manager</h1>
+            </div>
+            <div className="top-buttons">
+              <ProfileMenu authToken={authToken} />
+            </div>
+          </div>
+        )}
 
         {/* Filters and Actions */}
         <div className="filters-actions">

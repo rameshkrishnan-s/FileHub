@@ -1,12 +1,13 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "./pages/LoginPage.jsx";
-import AdminDashboard from "./pages/Dashboard.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
 import UserDashboard from "./pages/UserDashboard.jsx";
 import UserFolderView from "./pages/UserFolderView.jsx";
 import ViewerDashboard from "./pages/ViewerDashboard.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 function App() {
@@ -37,6 +38,11 @@ function App() {
         <Route path="/admin-page" element={
           <ProtectedRoute>
             <AdminPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/file-manager" element={
+          <ProtectedRoute>
+            <Dashboard />
           </ProtectedRoute>
         } />
         <Route path="/profile" element={

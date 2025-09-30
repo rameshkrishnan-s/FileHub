@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { User } from "lucide-react"; // Default person icon
+import { User, LogOut, Settings, ArrowLeft } from "lucide-react";
+import { logout as authLogout } from "../../services/authService";
+import { useNavigate } from "react-router-dom";
 
 export default function ProfileMenu({ authToken }) {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -33,6 +36,10 @@ export default function ProfileMenu({ authToken }) {
     fetchProfile();
   }, [authToken]);
 
+  const handleLogout = () => {
+    authLogout();
+  };
+
   return (
     <div className="relative">
       {/* Profile Button */}
@@ -46,18 +53,59 @@ export default function ProfileMenu({ authToken }) {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 mt-2 w-56 bg-white shadow-lg rounded-xl border p-4 z-20">
+        <div className="absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-xl border z-20">
           {loading ? (
-            <p className="text-sm text-gray-500">Loading...</p>
+            <div className="p-4">
+              <p className="text-sm text-gray-500">Loading...</p>
+            </div>
           ) : user ? (
             <>
-              <p className="font-semibold text-gray-900">{user.name}</p>
-              <p className="text-sm text-gray-600">{user.email}</p>
-              <p className="text-sm text-gray-600">{user.position}</p>
-              <p className="text-sm text-green-700 font-medium mt-1">Role: {user.role}</p>
+              {/* User Info */}
+              <div className="p-4 border-b border-gray-100">
+                <p className="font-semibold text-gray-900">{user.name}</p>
+                <p className="text-sm text-gray-600">{user.email}</p>
+                <p className="text-sm text-gray-600">{user.position || "N/A"}</p>
+                <p className="text-sm text-green-700 font-medium mt-1">Role: {user.role}</p>
+              </div>
+              
+              {/* Menu Options */}
+              <div className="py-2">
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    navigate('/admin');
+                  }}
+                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-3" />
+                  Back to Admin Dashboard
+                </button>
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    // Navigate to profile page if needed
+                  }}
+                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <Settings className="w-4 h-4 mr-3" />
+                  Profile Settings
+                </button>
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                >
+                  <LogOut className="w-4 h-4 mr-3" />
+                  Logout
+                </button>
+              </div>
             </>
           ) : (
-            <p className="text-sm text-gray-500">User not found</p>
+            <div className="p-4">
+              <p className="text-sm text-gray-500">User not found</p>
+            </div>
           )}
         </div>
       )}

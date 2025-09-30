@@ -11,8 +11,14 @@ export default function UserDashboard() {
   const [user, setUser] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("all");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState(() => {
+    // Get the saved tab from localStorage, default to "all"
+    return localStorage.getItem('userActiveTab') || "all";
+  });
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Get the saved sidebar state from localStorage, default to false
+    return localStorage.getItem('userSidebarOpen') === 'true' || false;
+  });
   const [showProfile, setShowProfile] = useState(false);
   const [taskFiles, setTaskFiles] = useState({});
   const [currentPath, setCurrentPath] = useState("");
@@ -51,6 +57,16 @@ export default function UserDashboard() {
   useEffect(() => {
     fetchTasks(activeTab === 'all' ? null : activeTab);
   }, [activeTab]);
+
+  // Save activeTab to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('userActiveTab', activeTab);
+  }, [activeTab]);
+
+  // Save sidebarOpen to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('userSidebarOpen', sidebarOpen.toString());
+  }, [sidebarOpen]);
 
   // Fetch all files (if still needed for other purposes)
   useEffect(() => {

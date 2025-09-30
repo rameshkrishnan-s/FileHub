@@ -1,9 +1,21 @@
 const express = require("express");
 const mysql = require("mysql2/promise");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const db = require("../models");
 
 const router = express.Router();
+
+// Apply authentication middleware to all admin routes
+router.use(authMiddleware);
+
+// Check if user is admin
+router.use((req, res, next) => {
+  if (parseInt(req.user.role) !== 1) {
+    return res.status(403).json({ message: 'Access denied. Admin role required.' });
+  }
+  next();
+});
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -209,6 +221,53 @@ router.post("/add-user", async (req, res) => {
     res.json({ message: "User created successfully!" });
   } catch (err) {
     res.status(500).json({ message: "Error creating user.", error: err.toString() });
+  } finally {
+    conn.release();
+  }
+});
+
+// Update user
+router.put("/users/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name, email, password, role_id, position } = req.body;
+
+  if (!name || !email || !role_id) {
+    return res.status(400).json({ message: "Name, email, and role are required!" });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    // Check if user exists
+    const [existing] = await conn.execute("SELECT * FROM users WHERE id = ?", [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ message: "User not found!" });
+    }
+
+    // Check if email already exists for another user
+    const [emailCheck] = await conn.execute("SELECT * FROM users WHERE email = ? AND id != ?", [email, id]);
+    if (emailCheck.length > 0) {
+      return res.status(400).json({ message: "User with this email already exists!" });
+    }
+
+    let updateQuery = "UPDATE users SET name = ?, email = ?, role_id = ?, position = ?";
+    let updateParams = [name, email, role_id, position || null];
+
+    // Only update password if provided
+    if (password && password.trim() !== "") {
+      const bcrypt = require("bcrypt");
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateQuery += ", password = ?";
+      updateParams.push(hashedPassword);
+    }
+
+    updateQuery += " WHERE id = ?";
+    updateParams.push(id);
+
+    await conn.execute(updateQuery, updateParams);
+
+    res.json({ message: "User updated successfully!" });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating user.", error: err.toString() });
   } finally {
     conn.release();
   }
