@@ -9,6 +9,7 @@ const folderRoutes = require("./src/routes/folderRoutes");
 const adminRoutes = require("./src/routes/adminRoutes");
 const fileRoutes = require("./src/routes/file");
 const combinedRoutes = require("./src/routes/combined");
+const userRoutes = require("./src/routes/user");
 
 
 // Initialize tables
@@ -26,6 +27,7 @@ app.use("/api/folder", folderRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/files", fileRoutes);
 app.use("/api/combined", combinedRoutes);
+app.use("/api/user", userRoutes);
 
 // Test endpoint
 app.get("/", (req, res) => res.send("Backend running 🚀"));
