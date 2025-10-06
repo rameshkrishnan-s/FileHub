@@ -325,33 +325,41 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+router.post(
+  "/upload",
+  authMiddleware,
+  upload.single("file"),
+  checkFolderPermission('write'),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded." });
+    }
 
-router.post("/upload", authMiddleware, checkFolderPermission('write'), upload.single("file"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: "No file uploaded." });
+    const currentPath = req.body.path || "";
+    const basePath = process.env.STORAGE_PATH || "D:/upload";
+
+    try {
+      const relativePath = path.join(basePath, currentPath, req.file.originalname);
+      const now = new Date();
+
+      await pool.execute(
+        "INSERT INTO metadata (fileName, filePath, type, createdAt, updatedAt, fileId) VALUES (?, ?, ?, ?, ?, ?)",
+        [req.file.originalname, relativePath, "file", now, now, null]
+      );
+
+      res.json({
+        message: "File uploaded and metadata saved successfully!",
+        fileName: req.file.originalname,
+        currentPath,
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: "Error saving metadata.",
+        error: error.toString(),
+      });
+    }
   }
-
-  const currentPath = req.body.path || folder_path || "";
-
-  try {
-    const relativePath = path.join(currentPath, req.file.originalname);
-
-    // Store in DB
-    const now = new Date();
-    await pool.execute(
-      "INSERT INTO metadata (fileName, filePath, type, createdAt, updatedAt, fileId) VALUES (?, ?, ?, ?, ?, ?)",
-      [req.file.originalname, relativePath, "file", now, now, null]
-    );
-
-    res.json({
-      message: "File uploaded and metadata saved successfully!",
-      fileName: req.file.originalname,
-      currentPath: currentPath,
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Error saving metadata.", error: error.toString() });
-  }
-});
+);
 
 
 // ✅ Search function with caching, pagination, and folder scope
