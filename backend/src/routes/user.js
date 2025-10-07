@@ -1,6 +1,9 @@
 const express = require("express");
 const mysql = require("mysql2/promise");
 const authMiddleware = require("../middleware/authMiddleware");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const db = require("../models");
 
@@ -156,6 +159,7 @@ router.get("/files/folder/:folderName", async (req, res) => {
   }
 });
 
+
 // 📌 Get all tasks for admin
 router.get("/all-tasks", async (req, res) => {
   const conn = await pool.getConnection();
@@ -176,6 +180,100 @@ router.get("/all-tasks", async (req, res) => {
     conn.release();
   }
 });
+
+// Set storage engine dynamically based on task folder
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    try {
+      const { task_id } = req.body;
+      if (!task_id) return cb(new Error("Task ID is required!"));
+
+      const conn = await pool.getConnection();
+      const [task] = await conn.execute(
+        "SELECT file_or_folder_name FROM tasks WHERE id = ?",
+        [task_id]
+      );
+      conn.release();
+
+      if (task.length === 0)
+        return cb(new Error("Invalid Task ID — task not found!"));
+
+      // Use STORAGE_PATH from env or default to D:/upload
+      const basePath = process.env.STORAGE_PATH || "D:/upload";
+      const folderPath = path.join(basePath, task[0].file_or_folder_name);
+
+      if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, { recursive: true });
+      }
+
+      cb(null, folderPath);
+    } catch (err) {
+      console.error("Multer destination error:", err);
+      cb(err);
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueName =
+      Date.now() + "-" + Math.round(Math.random() * 1e9) + path.extname(file.originalname);
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type!"), false);
+    }
+  },
+}).fields([{ name: "file" }, { name: "task_id" }]);
+
+router.post("/upload", (req, res) => {
+  upload(req, res, async (err) => {
+    if (err) {
+      console.error("Multer error:", err);
+      return res.status(400).json({ message: err.message });
+    }
+
+    try {
+      const { task_id } = req.body;
+      if (!task_id) {
+        return res.status(400).json({ message: "Task ID is required!" });
+      }
+
+      if (!req.files || !req.files.file) {
+        return res.status(400).json({ message: "No file uploaded!" });
+      }
+
+      const file = req.files.file[0];
+      const filePath = file.path.replace(/\\/g, "/");
+      const now = new Date();
+
+      const conn = await pool.getConnection();
+      await conn.execute(
+        "INSERT INTO metadata (fileName, filePath, type, fileId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)",
+        [file.originalname, filePath, "file", null, now, now]
+      );
+      conn.release();
+
+      res.json({
+        message: "File uploaded successfully!",
+        file: {
+          name: file.originalname,
+          path: filePath,
+        },
+      });
+    } catch (dbErr) {
+      console.error("Database error:", dbErr);
+      res.status(500).json({ message: "Error uploading file.", error: dbErr.toString() });
+    }
+  });
+});
+
 
 // Export CommonJS
 module.exports = router;

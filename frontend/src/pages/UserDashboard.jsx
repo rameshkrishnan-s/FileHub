@@ -14,11 +14,12 @@ export default function UserDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [taskFiles, setTaskFiles] = useState({});
+  const [uploading, setUploading] = useState(false);
 
   // Fetch user profile
   useEffect(() => {
     const userId = getUserId();
-    console.log("Fetched userId (Profile):", userId); 
+    console.log("Fetched userId (Profile):", userId);
     if (userId) {
       API.get(`/api/user/profile?id=${userId}`)
         .then((res) => setUser(res.data.user))
@@ -32,7 +33,7 @@ export default function UserDashboard() {
     const userId = getUserId();
     if (userId) {
       try {
-        const url = status 
+        const url = status
           ? `/api/user/my-tasks/${userId}?status=${status}`
           : `/api/user/my-tasks/${userId}`;
         const res = await API.get(url);
@@ -45,7 +46,7 @@ export default function UserDashboard() {
   };
 
   useEffect(() => {
-    fetchTasks(activeTab === 'all' ? null : activeTab);
+    fetchTasks(activeTab === "all" ? null : activeTab);
   }, [activeTab]);
 
   // Fetch all files (if still needed for other purposes)
@@ -55,22 +56,35 @@ export default function UserDashboard() {
       .catch((err) => console.error(err));
   }, []);
 
-  const handleUpload = async () => {
-    if (!file) return;
-    const formData = new FormData();
-    formData.append("file", file);
+  const handleFileChange = (event) => {
+    setFile(event.target.files[0]);
+  };
 
+  const handleUpload = async (taskId, folderName) => {
+    if (!file) {
+      alert("Please select a file first.");
+      return;
+    }
+    const userId = getUserId();
+    const formData = new FormData();
+    formData.append("task_id", taskId);
+    formData.append("file", file);
+    formData.append("folderName", folderName);
+    formData.append("userId", userId);
+    
+    setUploading(true);
     try {
-      await API.post("/files/upload", formData, {
+      const res = await API.post("/api/user/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      alert("File uploaded!");
+      alert("File uploaded successfully!");
       setFile(null);
-      const res = await API.get("/files");
-      setFiles(res.data);
+      fetchTaskFiles(taskId, folderName);
     } catch (err) {
       console.error(err);
+      alert("File upload failoed!");
     }
+    setUploading(false);
   };
 
   const updateTaskStatus = async (taskId, status) => {
@@ -85,7 +99,7 @@ export default function UserDashboard() {
   const fetchTaskFiles = async (taskId, folder) => {
     try {
       const res = await API.get(`/api/user/files/folder/${folder}`);
-      setTaskFiles(prev => ({ ...prev, [taskId]: res.data.files }));
+      setTaskFiles((prev) => ({ ...prev, [taskId]: res.data.files }));
     } catch (err) {
       console.error(err);
     }
@@ -124,10 +138,8 @@ export default function UserDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col">
-      {/* Main Company Header */}
       <Header />
-
-      {/* Top Nav Bar with Task Tabs */}
+      {/* Top Nav Bar */}
       <div className="fixed top-[108px] left-0 p-4 bg-white border-b border-gray-200 shadow z-50 w-full">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -140,43 +152,23 @@ export default function UserDashboard() {
             <h1 className="text-xl font-semibold">User Dashboard</h1>
           </div>
           <div className="flex space-x-2">
-            <button
-              onClick={() => setActiveTab("all")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === "all" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              All Tasks
-            </button>
-            <button
-              onClick={() => setActiveTab("pending")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === "pending" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              Pending
-            </button>
-            <button
-              onClick={() => setActiveTab("accepted")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === "accepted" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              Accepted
-            </button>
-            <button
-              onClick={() => setActiveTab("completed")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === "completed" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              Completed
-            </button>
+            {["all", "pending", "accepted", "completed"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  activeTab === tab
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)} Tasks
+              </button>
+            ))}
           </div>
         </div>
       </div>
-
-      {/* Sidebar with only Profile */}
+      {/* Sidebar */}
       <aside
         className={`fixed top-[108px] left-0 h-full w-64 bg-white border-r border-gray-200 shadow-lg p-4 transform transition-transform duration-300 z-40 pt-16 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -194,7 +186,6 @@ export default function UserDashboard() {
           </li>
         </ul>
       </aside>
-
       {/* Main Content */}
       <main
         className={`flex-1 p-6 transition-all duration-300 ${
@@ -205,14 +196,21 @@ export default function UserDashboard() {
         {showProfile && user && (
           <div className="bg-gray-100 p-4 rounded mb-4 shadow">
             <h2 className="text-xl font-semibold mb-2">Profile Details</h2>
-            <p><strong>Name:</strong> {user.name}</p>
-            <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Role:</strong> {user.role}</p>
-            <p><strong>Position:</strong> {user.position}</p>
+            <p>
+              <strong>Name:</strong> {user.name}
+            </p>
+            <p>
+              <strong>Email:</strong> {user.email}
+            </p>
+            <p>
+              <strong>Role:</strong> {user.role}
+            </p>
+            <p>
+              <strong>Position:</strong> {user.position}
+            </p>
           </div>
         )}
-
-        {/* Content based on active tab */}
+        {/* All Tasks */}
         {activeTab === "all" && (
           <div>
             <h2 className="text-xl font-semibold mb-4">All Tasks</h2>
@@ -222,22 +220,55 @@ export default function UserDashboard() {
               <div className="space-y-4">
                 {tasks.length > 0 ? (
                   tasks.map((task) => (
-                    <div key={task.id} className="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div
+                      key={task.id}
+                      className="bg-white p-4 rounded-lg shadow border border-gray-200"
+                    >
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-semibold text-lg">{task.task}</h3>
                         {getStatusBadge(task.status)}
                       </div>
                       {task.file_or_folder_name && (
                         <p className="text-sm text-gray-600">
-                          <strong>File/Folder:</strong> {task.file_or_folder_name}
+                          <strong>File/Folder:</strong>{" "}
+                          {task.file_or_folder_name}
                         </p>
                       )}
                       {task.message && (
                         <p className="mt-2 text-gray-700">{task.message}</p>
                       )}
                       <p className="text-xs text-gray-400 mt-2">
-                        Assigned on: {new Date(task.created_at).toLocaleDateString()}
+                        Assigned on:{" "}
+                        {new Date(task.created_at).toLocaleDateString()}
                       </p>
+                      {/* Upload Section for All Tasks */}
+                      {task.file_or_folder_name && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium mb-1">
+                            Upload a file for this task
+                          </label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="file"
+                              onChange={handleFileChange}
+                              className="border border-gray-300 p-2 rounded w-full"
+                            />
+                            <button
+                              onClick={() =>
+                                handleUpload(task.id, task.file_or_folder_name)
+                              }
+                              disabled={uploading}
+                              className={`px-4 py-2 rounded text-white ${
+                                uploading
+                                  ? "bg-gray-400 cursor-not-allowed"
+                                  : "bg-blue-500 hover:bg-blue-600"
+                              }`}
+                            >
+                              {uploading ? "Uploading..." : "Upload"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))
                 ) : (
@@ -247,7 +278,7 @@ export default function UserDashboard() {
             )}
           </div>
         )}
-
+        {/* Pending Tasks */}
         {activeTab === "pending" && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Pending Tasks</h2>
@@ -257,31 +288,64 @@ export default function UserDashboard() {
               <div className="space-y-4">
                 {tasks.length > 0 ? (
                   tasks.map((task) => (
-                    <div key={task.id} className="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div
+                      key={task.id}
+                      className="bg-white p-4 rounded-lg shadow border border-gray-200"
+                    >
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-semibold text-lg">{task.task}</h3>
                         {getStatusBadge(task.status)}
                       </div>
                       {task.file_or_folder_name && (
                         <p className="text-sm text-gray-600">
-                          <strong>File/Folder:</strong> {task.file_or_folder_name}
+                          <strong>File/Folder:</strong>{" "}
+                          {task.file_or_folder_name}
                         </p>
                       )}
                       {task.message && (
                         <p className="mt-2 text-gray-700">{task.message}</p>
                       )}
                       <p className="text-xs text-gray-400 mt-2">
-                        Assigned on: {new Date(task.created_at).toLocaleDateString()}
+                        Assigned on:{" "}
+                        {new Date(task.created_at).toLocaleDateString()}
                       </p>
+                      {/* Upload Section for Pending Tasks */}
+                      {task.file_or_folder_name && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium mb-1">
+                            Upload a file for this task
+                          </label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="file"
+                              onChange={handleFileChange}
+                              className="border border-gray-300 p-2 rounded w-full"
+                            />
+                            <button
+                              onClick={() =>
+                                handleUpload(task.id, task.file_or_folder_name)
+                              }
+                              disabled={uploading}
+                              className={`px-4 py-2 rounded text-white ${
+                                uploading
+                                  ? "bg-gray-400 cursor-not-allowed"
+                                  : "bg-blue-500 hover:bg-blue-600"
+                              }`}
+                            >
+                              {uploading ? "Uploading..." : "Upload"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <div className="mt-4 flex space-x-2">
                         <button
-                          onClick={() => updateTaskStatus(task.id, 'accepted')}
+                          onClick={() => updateTaskStatus(task.id, "accepted")}
                           className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
                         >
                           Accept
                         </button>
                         <button
-                          onClick={() => updateTaskStatus(task.id, 'rejected')}
+                          onClick={() => updateTaskStatus(task.id, "rejected")}
                           className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
                         >
                           Reject
@@ -296,7 +360,7 @@ export default function UserDashboard() {
             )}
           </div>
         )}
-
+        {/* Accepted Tasks */}
         {activeTab === "accepted" && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Accepted Tasks</h2>
@@ -306,43 +370,80 @@ export default function UserDashboard() {
               <div className="space-y-4">
                 {tasks.length > 0 ? (
                   tasks.map((task) => (
-                    <div key={task.id} className="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div
+                      key={task.id}
+                      className="bg-white p-4 rounded-lg shadow border border-gray-200"
+                    >
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-semibold text-lg">{task.task}</h3>
                         {getStatusBadge(task.status)}
                       </div>
                       {task.file_or_folder_name && (
                         <p className="text-sm text-gray-600">
-                          <strong>File/Folder:</strong> {task.file_or_folder_name}
+                          <strong>File/Folder:</strong>{" "}
+                          {task.file_or_folder_name}
                         </p>
                       )}
                       {task.message && (
                         <p className="mt-2 text-gray-700">{task.message}</p>
                       )}
                       <p className="text-xs text-gray-400 mt-2">
-                        Assigned on: {new Date(task.created_at).toLocaleDateString()}
+                        Assigned on:{" "}
+                        {new Date(task.created_at).toLocaleDateString()}
                       </p>
+                      {/* Upload Section for Accepted Tasks */}
+                      {task.file_or_folder_name && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium mb-1">
+                            Upload a file for this task
+                          </label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="file"
+                              onChange={handleFileChange}
+                              className="border border-gray-300 p-2 rounded w-full"
+                            />
+                            <button
+                              onClick={() =>
+                                handleUpload(task.id, task.file_or_folder_name)
+                              }
+                              disabled={uploading}
+                              className={`px-4 py-2 rounded text-white ${
+                                uploading
+                                  ? "bg-gray-400 cursor-not-allowed"
+                                  : "bg-blue-500 hover:bg-blue-600"
+                              }`}
+                            >
+                              {uploading ? "Uploading..." : "Upload"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <div className="mt-4 flex space-x-2">
                         <button
-                          onClick={() => updateTaskStatus(task.id, 'completed')}
-                          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                          onClick={() => updateTaskStatus(task.id, "completed")}
+                          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
                         >
                           Mark as Completed
                         </button>
-                        {task.file_or_folder_name && (
-                          <button
-                            onClick={() => fetchTaskFiles(task.id, task.file_or_folder_name)}
-                            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-                          >
-                            View Directory Files
-                          </button>
-                        )}
+                        <button
+                          onClick={() =>
+                            fetchTaskFiles(task.id, task.file_or_folder_name)
+                          }
+                          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                        >
+                          View Directory Files
+                        </button>
                       </div>
                       {taskFiles[task.id] && (
                         <div className="mt-4">
-                          <h4 className="font-semibold">Files in {task.file_or_folder_name}:</h4>
+                          <h4 className="font-semibold">
+                            Files in {task.file_or_folder_name}:
+                          </h4>
                           <ul className="list-disc pl-5">
-                            {taskFiles[task.id].map(file => <li key={file.id}>{file.originalName}</li>)}
+                            {taskFiles[task.id].map((f) => (
+                              <li key={f.id}>{f.originalName}</li>
+                            ))}
                           </ul>
                         </div>
                       )}
@@ -355,7 +456,7 @@ export default function UserDashboard() {
             )}
           </div>
         )}
-
+        {/* Completed Tasks */}
         {activeTab === "completed" && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Completed Tasks</h2>
@@ -365,22 +466,55 @@ export default function UserDashboard() {
               <div className="space-y-4">
                 {tasks.length > 0 ? (
                   tasks.map((task) => (
-                    <div key={task.id} className="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div
+                      key={task.id}
+                      className="bg-white p-4 rounded-lg shadow border border-gray-200"
+                    >
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-semibold text-lg">{task.task}</h3>
                         {getStatusBadge(task.status)}
                       </div>
                       {task.file_or_folder_name && (
                         <p className="text-sm text-gray-600">
-                          <strong>File/Folder:</strong> {task.file_or_folder_name}
+                          <strong>File/Folder:</strong>{" "}
+                          {task.file_or_folder_name}
                         </p>
                       )}
                       {task.message && (
                         <p className="mt-2 text-gray-700">{task.message}</p>
                       )}
                       <p className="text-xs text-gray-400 mt-2">
-                        Assigned on: {new Date(task.created_at).toLocaleDateString()}
+                        Assigned on:{" "}
+                        {new Date(task.created_at).toLocaleDateString()}
                       </p>
+                      {/* Upload Section for Completed Tasks */}
+                      {task.file_or_folder_name && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium mb-1">
+                            Upload a file for this task
+                          </label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="file"
+                              onChange={handleFileChange}
+                              className="border border-gray-300 p-2 rounded w-full"
+                            />
+                            <button
+                              onClick={() =>
+                                handleUpload(task.id, task.file_or_folder_name)
+                              }
+                              disabled={uploading}
+                              className={`px-4 py-2 rounded text-white ${
+                                uploading
+                                  ? "bg-gray-400 cursor-not-allowed"
+                                  : "bg-blue-500 hover:bg-blue-600"
+                              }`}
+                            >
+                              {uploading ? "Uploading..." : "Upload"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))
                 ) : (
