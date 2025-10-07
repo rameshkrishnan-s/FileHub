@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import API from "../services/api.js";
 import Header from "../components/header";
-import { Menu } from "lucide-react";
+import { Menu, User } from "lucide-react";
 import { getUserId } from "../services/authService.js";
+import { useNavigate } from "react-router-dom";
+
 
 export default function UserDashboard() {
+   const navigate = useNavigate();
   const [files, setFiles] = useState([]);
   const [file, setFile] = useState(null);
   const [user, setUser] = useState(null);
@@ -81,6 +84,11 @@ export default function UserDashboard() {
       console.error(err);
     }
   };
+  const handleLogout = () => {
+    sessionStorage.removeItem("token");  
+    sessionStorage.removeItem("user");   
+    navigate("/"); // redirect to landing page
+  };
 
   const fetchTaskFiles = async (taskId, folder) => {
     try {
@@ -125,56 +133,70 @@ export default function UserDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col">
       {/* Main Company Header */}
-      <Header />
+     <div className="sticky top-0 z-50">
+  <Header />
+</div>
 
-      {/* Top Nav Bar with Task Tabs */}
-      <div className="fixed top-[108px] left-0 p-4 bg-white border-b border-gray-200 shadow z-50 w-full">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-gray-700 focus:outline-none mr-4"
-            >
-              <Menu size={28} />
-            </button>
-            <h1 className="text-xl font-semibold">User Dashboard</h1>
-          </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setActiveTab("all")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === "all" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              All Tasks
-            </button>
-            <button
-              onClick={() => setActiveTab("pending")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === "pending" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              Pending
-            </button>
-            <button
-              onClick={() => setActiveTab("accepted")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === "accepted" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              Accepted
-            </button>
-            <button
-              onClick={() => setActiveTab("completed")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === "completed" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              Completed
-            </button>
-          </div>
-        </div>
-      </div>
+
+{/* Top Nav Bar with Task Tabs */}
+<div className="fixed top-[108px] left-0 p-4 bg-white border-b border-gray-200 shadow z-50 w-full">
+  <div className="flex items-center justify-between">
+    <h1 className="text-xl font-semibold">User Dashboard</h1>
+
+    <div className="flex space-x-2 items-center">
+      <button
+        onClick={() => setActiveTab("all")}
+        className={`px-4 py-2 rounded-lg text-sm font-medium ${
+          activeTab === "all"
+            ? "bg-blue-600 text-white"
+            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+        }`}
+      >
+        All Tasks
+      </button>
+      <button
+        onClick={() => setActiveTab("pending")}
+        className={`px-4 py-2 rounded-lg text-sm font-medium ${
+          activeTab === "pending"
+            ? "bg-blue-500 text-white"
+            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+        }`}
+      >
+        Pending
+      </button>
+      <button
+        onClick={() => setActiveTab("accepted")}
+        className={`px-4 py-2 rounded-lg text-sm font-medium ${
+          activeTab === "accepted"
+            ? "bg-blue-500 text-white"
+            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+        }`}
+      >
+        Accepted
+      </button>
+      <button
+        onClick={() => setActiveTab("completed")}
+        className={`px-4 py-2 rounded-lg text-sm font-medium ${
+          activeTab === "completed"
+            ? "bg-blue-500 text-white"
+            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+        }`}
+      >
+        Completed
+      </button>
+
+      {/* Profile Icon */}
+      <button
+        onClick={() => setShowProfile(!showProfile)}
+        className="ml-3 p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700"
+      >
+        <User size={22} />
+      </button>
+    </div>
+  </div>
+</div>
+
+
 
       {/* Sidebar with only Profile */}
       <aside
@@ -203,14 +225,22 @@ export default function UserDashboard() {
       >
         {/* Profile Section */}
         {showProfile && user && (
-          <div className="bg-gray-100 p-4 rounded mb-4 shadow">
-            <h2 className="text-xl font-semibold mb-2">Profile Details</h2>
-            <p><strong>Name:</strong> {user.name}</p>
-            <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Role:</strong> {user.role}</p>
-            <p><strong>Position:</strong> {user.position}</p>
-          </div>
-        )}
+  <div className="bg-gray-100 p-4 rounded mb-4 shadow">
+    <h2 className="text-xl font-semibold mb-2">Profile Details</h2>
+    <p><strong>Name:</strong> {user.name}</p>
+    <p><strong>Email:</strong> {user.email}</p>
+    <p><strong>Role:</strong> {user.role}</p>
+    <p><strong>Position:</strong> {user.position}</p>
+
+    {/* Logout Button */}
+    <button
+      onClick={handleLogout}
+      className="mt-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+    >
+      Logout
+    </button>
+  </div>
+)}
 
         {/* Content based on active tab */}
         {activeTab === "all" && (
