@@ -291,9 +291,12 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <Header />
+      <div className="sticky top-0 z-50">
+        <Header />
+      </div>
 
       <div className="flex">
+        <aside className="h-screen sticky top-0 ...">
         {/* Sidebar */}
         <AdminSidebar 
           activeTab={activeTab}
@@ -301,6 +304,7 @@ export default function AdminDashboard() {
           isCollapsed={sidebarCollapsed}
           setIsCollapsed={setSidebarCollapsed}
         />
+        </aside>
 
         {/* Main Content */}
         <div className="flex-1">

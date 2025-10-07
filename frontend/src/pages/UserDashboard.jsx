@@ -67,11 +67,10 @@ export default function UserDashboard() {
     }
     const userId = getUserId();
     const formData = new FormData();
-    formData.append("task_id", taskId);
+     formData.append("task_id", taskId); // Append task_id
     formData.append("file", file);
     formData.append("folderName", folderName);
     formData.append("userId", userId);
-    
     setUploading(true);
     try {
       const res = await API.post("/api/user/upload", formData, {
@@ -82,7 +81,7 @@ export default function UserDashboard() {
       fetchTaskFiles(taskId, folderName);
     } catch (err) {
       console.error(err);
-      alert("File upload failoed!");
+      alert("File upload failed!");
     }
     setUploading(false);
   };
