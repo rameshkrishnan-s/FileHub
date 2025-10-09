@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import API from "../services/api.js";
 import Header from "../components/header";
-import { Menu } from "lucide-react";
+import { Menu, User} from "lucide-react";
 import { getUserId } from "../services/authService.js";
+
+import { useNavigate } from "react-router-dom"; // Needed for logout redirect
+
 
 export default function UserDashboard() {
   const [files, setFiles] = useState([]);
@@ -15,7 +18,7 @@ export default function UserDashboard() {
   const [showProfile, setShowProfile] = useState(false);
   const [taskFiles, setTaskFiles] = useState({});
   const [uploading, setUploading] = useState(false);
-
+   const navigate = useNavigate();
   // Fetch user profile
   useEffect(() => {
     const userId = getUserId();
@@ -65,6 +68,15 @@ export default function UserDashboard() {
       alert("Please select a file first.");
       return;
     }
+
+ 
+
+const handleLogout = () => {
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    navigate("/"); // Redirect to landing page
+  };
+
     const userId = getUserId();
     const formData = new FormData();
      formData.append("task_id", taskId); // Append task_id
@@ -137,22 +149,12 @@ export default function UserDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col">
-      <div className="sticky top-0 z-50">
-  <Header />
-</div>
+      <Header />
       {/* Top Nav Bar */}
       <div className="fixed top-[108px] left-0 p-4 bg-white border-b border-gray-200 shadow z-50 w-full">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-gray-700 focus:outline-none mr-4"
-            >
-              <Menu size={28} />
-            </button>
-            <h1 className="text-xl font-semibold">User Dashboard</h1>
-          </div>
-          <div className="flex space-x-2">
+          <h1 className="text-xl font-semibold">User Dashboard</h1>
+          <div className="flex items-center space-x-2">
             {["all", "pending", "accepted", "completed"].map((tab) => (
               <button
                 key={tab}
@@ -166,28 +168,19 @@ export default function UserDashboard() {
                 {tab.charAt(0).toUpperCase() + tab.slice(1)} Tasks
               </button>
             ))}
+
+            {/* Profile Icon */}
+            <button
+              onClick={() => setShowProfile(!showProfile)}
+              className="ml-4 p-2 rounded-full hover:bg-gray-200"
+            >
+              <User size={24} />
+            </button>
           </div>
         </div>
       </div>
       {/* Sidebar */}
-      <aside
-        className={`fixed top-[108px] left-0 h-full w-64 bg-white border-r border-gray-200 shadow-lg p-4 transform transition-transform duration-300 z-40 pt-16 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <h2 className="text-lg font-bold mb-4">Menu</h2>
-        <ul className="space-y-2">
-          <li>
-            <button
-              onClick={() => setShowProfile(!showProfile)}
-              className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100"
-            >
-              Profile
-            </button>
-          </li>
-        </ul>
-      </aside>
-      {/* Main Content */}
+      
       <main
         className={`flex-1 p-6 transition-all duration-300 ${
           sidebarOpen ? "ml-64" : "ml-0"
@@ -195,22 +188,24 @@ export default function UserDashboard() {
       >
         {/* Profile Section */}
         {showProfile && user && (
-          <div className="bg-gray-100 p-4 rounded mb-4 shadow">
-            <h2 className="text-xl font-semibold mb-2">Profile Details</h2>
-            <p>
-              <strong>Name:</strong> {user.name}
-            </p>
-            <p>
-              <strong>Email:</strong> {user.email}
-            </p>
-            <p>
-              <strong>Role:</strong> {user.role}
-            </p>
-            <p>
-              <strong>Position:</strong> {user.position}
-            </p>
-          </div>
-        )}
+  <div className="bg-white p-6 rounded-lg shadow mb-6">
+    <h2 className="text-2xl font-semibold mb-4">Profile</h2>
+    <p><strong>Name:</strong> {user.name}</p>
+    <p><strong>Email:</strong> {user.email}</p>
+    <p><strong>Role:</strong> {user.role}</p>
+    <p><strong>Position:</strong> {user.position}</p>
+    <button
+      onClick={() => {
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
+        navigate("/"); // Redirect to landing page
+      }}
+      className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+    >
+      Logout
+    </button>
+  </div>
+)}
         {/* All Tasks */}
         {activeTab === "all" && (
           <div>
