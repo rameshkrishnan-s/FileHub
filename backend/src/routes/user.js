@@ -275,5 +275,99 @@ router.post("/upload", (req, res) => {
 });
 
 
+router.get("/list", authMiddleware, async (req, res) => {
+  const requestedPath = req.query.path || "";
+  const targetUserId = req.query.user_id || req.user.id; // if admin wants another user's files
+  const fullPath = path.join(STORAGE_PATH, requestedPath);
+
+  const userRole = parseInt(req.user.role);
+
+  // Admin can see any user's files
+  if (userRole !== 1 && parseInt(targetUserId) !== req.user.id) {
+    return res.status(403).json({ message: "Access denied. Admin only." });
+  }
+
+  try {
+    // Get target user's permissions
+    const [userPermissions] = await pool.execute(
+      "SELECT file_or_folder, permission FROM user_files WHERE user_id = ?",
+      [targetUserId]
+    );
+
+    if (userPermissions.length === 0) {
+      return res.status(403).json({ message: 'Access denied. User has no permissions.' });
+    }
+
+    // Non-admin: check if requestedPath is permitted
+    if (userRole !== 1) {
+      const hasAccess = userPermissions.some(perm => {
+        const normRequested = requestedPath.replace(/^[A-Z]:[\/\\]?/, '').replace(/\\/g, '/');
+        const normPerm = perm.file_or_folder.replace(/^[A-Z]:[\/\\]?/, '').replace(/\\/g, '/');
+        return normRequested.startsWith(normPerm) || normPerm.startsWith(normRequested);
+      });
+
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Access denied. You do not have permission for this folder.' });
+      }
+    }
+
+    // If directory does not exist, return empty array
+    if (!fs.existsSync(fullPath)) {
+      return res.json([]);
+    }
+
+    // Read folder contents
+    const items = await Promise.all(
+      fs.readdirSync(fullPath).map(async (name) => {
+        const fullItemPath = path.join(fullPath, name);
+        const stats = fs.statSync(fullItemPath);
+        const isDirectory = stats.isDirectory();
+
+        // Get metadata for files
+        let metadata = null;
+        if (!isDirectory) {
+          const relativePath = path.join(requestedPath, name);
+          const [metadataRows] = await pool.execute(
+            "SELECT * FROM metadata WHERE filePath = ?",
+            [relativePath]
+          );
+          metadata = metadataRows[0] || null;
+        }
+
+        // Determine if user has permission for this specific file/folder
+        const permissionObj = userPermissions.find((perm) => {
+          const normPerm = perm.file_or_folder.replace(/^[A-Z]:[\/\\]?/, '').replace(/\\/g, '/');
+          const normPath = path.join(requestedPath, name).replace(/\\/g, '/');
+          return normPath.startsWith(normPerm) || normPerm.startsWith(normPath);
+        });
+
+        return {
+          name,
+          type: isDirectory ? "folder" : "file",
+          createdAt: stats.birthtime,
+          ...(metadata || {}),
+          path: path.join(requestedPath, name),
+          permission: permissionObj ? permissionObj.permission : null,
+        };
+      })
+    );
+
+    // Sort folders first, then files
+    const sortedItems = items.sort((a, b) => {
+      if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    res.json(sortedItems);
+  } catch (error) {
+    console.error('Error reading directory:', error);
+    res.status(500).json({
+      message: "Error reading directory.",
+      error: error.toString(),
+    });
+  }
+});
+
+
 // Export CommonJS
 module.exports = router;
