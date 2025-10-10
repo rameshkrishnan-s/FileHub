@@ -37,7 +37,8 @@ export default function TaskCard({
             <input
               type="file"
               onChange={handleFileChange}
-              className="border border-gray-300 p-2 rounded w-full"
+              className="border border-gray-300 p-2 rounded flex-1 max-w-[250px] 
++ focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-300"
             />
             <button
               onClick={() => handleUpload(task.id, task.file_or_folder_name)}
