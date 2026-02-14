@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Building, Package, Plus, Edit, Trash2, Loader2, Search, X } from "lucide-react";
+import {
+  Building,
+  Package,
+  Plus,
+  Edit,
+  Trash2,
+  Loader2,
+  Search,
+  X,
+} from "lucide-react";
 
 export default function Codes() {
   const [companies, setCompanies] = useState([]);
@@ -50,9 +59,12 @@ export default function Codes() {
   const fetchAssemblyCodes = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/admin/assembly-codes", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        "http://localhost:5000/api/admin/assembly-codes",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       const data = await res.json();
       setAssemblyCodes(data.codes || []);
     } catch (err) {
@@ -81,10 +93,14 @@ export default function Codes() {
 
   // Add functions
   const addCompany = async () => {
-    if (!companyName || !companyCode) return alert("Please enter both name and code.");
+    if (!companyName || !companyCode)
+      return alert("Please enter both name and code.");
     const res = await fetch("http://localhost:5000/api/admin/add-company", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ name: companyName, code: companyCode }),
     });
     if (res.ok) {
@@ -96,10 +112,14 @@ export default function Codes() {
   };
 
   const addAssembly = async () => {
-    if (!assemblyName || !assemblyCode) return alert("Please enter both name and code.");
+    if (!assemblyName || !assemblyCode)
+      return alert("Please enter both name and code.");
     const res = await fetch("http://localhost:5000/api/admin/add-assembly", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ name: assemblyName, code: assemblyCode }),
     });
     if (res.ok) {
@@ -112,20 +132,28 @@ export default function Codes() {
 
   // Delete functions
   const deleteCompany = async (code) => {
-    if (!window.confirm("Are you sure you want to delete this company?")) return;
+    if (!window.confirm("Are you sure you want to delete this company?"))
+      return;
     const res = await fetch("http://localhost:5000/api/admin/delete-company", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ code }),
     });
     if (res.ok) fetchCompanies();
   };
 
   const deleteAssembly = async (code) => {
-    if (!window.confirm("Are you sure you want to delete this assembly?")) return;
+    if (!window.confirm("Are you sure you want to delete this assembly?"))
+      return;
     const res = await fetch("http://localhost:5000/api/admin/delete-assembly", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ code }),
     });
     if (res.ok) fetchAssemblyCodes();
@@ -136,7 +164,10 @@ export default function Codes() {
     const { oldCode, name, code } = editingCompany;
     const res = await fetch("http://localhost:5000/api/admin/edit-company", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ oldCode, newName: name, newCode: code }),
     });
     if (res.ok) {
@@ -149,7 +180,10 @@ export default function Codes() {
     const { oldCode, name, code } = editingAssembly;
     const res = await fetch("http://localhost:5000/api/admin/edit-assembly", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ oldCode, newName: name, newCode: code }),
     });
     if (res.ok) {
@@ -177,27 +211,30 @@ export default function Codes() {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
+          {/* Filter by Company Code */}
           <select
             value={filterCompany}
             onChange={(e) => setFilterCompany(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
           >
-            <option value="">Filter by Company Code</option>
+            <option value="">Filter by Company</option>
             {companies.map((c) => (
               <option key={c.code} value={c.code}>
-                {c.code}
+                {c.name} - {c.code}
               </option>
             ))}
           </select>
+
+          {/* Filter by Assembly Code */}
           <select
             value={filterAssembly}
             onChange={(e) => setFilterAssembly(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
           >
-            <option value="">Filter by Assembly Code</option>
+            <option value="">Filter by Assembly</option>
             {assemblyCodes.map((a) => (
               <option key={a.code} value={a.code}>
-                {a.code}
+                {a.name} - {a.code}
               </option>
             ))}
           </select>
@@ -223,13 +260,19 @@ export default function Codes() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <Building className="h-6 w-6 text-indigo-600 mr-2" />
-              <h2 className="text-2xl font-semibold text-gray-900">Companies</h2>
+              <h2 className="text-2xl font-semibold text-gray-900">
+                Companies
+              </h2>
             </div>
             <button
               onClick={() => setShowAddCompany(!showAddCompany)}
               className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 flex items-center justify-center w-48"
             >
-              {showAddCompany ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              {showAddCompany ? (
+                <X className="h-4 w-4 mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
               {showAddCompany ? "Cancel" : "Add Company"}
             </button>
           </div>
@@ -257,7 +300,11 @@ export default function Codes() {
                   disabled={loading}
                   className="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 disabled:opacity-50 flex items-center"
                 >
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-2" />
+                  )}
                   Add
                 </button>
               </div>
@@ -268,8 +315,12 @@ export default function Codes() {
           {filteredCompanies.length === 0 ? (
             <div className="text-center py-12">
               <Building className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No companies found</h3>
-              <p className="text-gray-500">Try adjusting your search or filters, or add a new company.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No companies found
+              </h3>
+              <p className="text-gray-500">
+                Try adjusting your search or filters, or add a new company.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -283,7 +334,10 @@ export default function Codes() {
                       <input
                         value={editingCompany.name}
                         onChange={(e) =>
-                          setEditingCompany({ ...editingCompany, name: e.target.value })
+                          setEditingCompany({
+                            ...editingCompany,
+                            name: e.target.value,
+                          })
                         }
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                         placeholder="Company name"
@@ -291,7 +345,10 @@ export default function Codes() {
                       <input
                         value={editingCompany.code}
                         onChange={(e) =>
-                          setEditingCompany({ ...editingCompany, code: e.target.value })
+                          setEditingCompany({
+                            ...editingCompany,
+                            code: e.target.value,
+                          })
                         }
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                         placeholder="Code"
@@ -318,7 +375,11 @@ export default function Codes() {
                       <div className="flex gap-2">
                         <button
                           onClick={() =>
-                            setEditingCompany({ oldCode: c.code, name: c.name, code: c.code })
+                            setEditingCompany({
+                              oldCode: c.code,
+                              name: c.name,
+                              code: c.code,
+                            })
                           }
                           className="bg-yellow-500 text-white p-2 rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition duration-200"
                           title="Edit"
@@ -346,13 +407,19 @@ export default function Codes() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <Package className="h-6 w-6 text-indigo-600 mr-2" />
-              <h2 className="text-2xl font-semibold text-gray-900">Assemblies</h2>
+              <h2 className="text-2xl font-semibold text-gray-900">
+                Assemblies
+              </h2>
             </div>
             <button
               onClick={() => setShowAddAssembly(!showAddAssembly)}
               className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 flex items-center justify-center w-48"
             >
-              {showAddAssembly ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              {showAddAssembly ? (
+                <X className="h-4 w-4 mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
               {showAddAssembly ? "Cancel" : "Add Assembly"}
             </button>
           </div>
@@ -380,7 +447,11 @@ export default function Codes() {
                   disabled={loading}
                   className="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 disabled:opacity-50 flex items-center"
                 >
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-2" />
+                  )}
                   Add
                 </button>
               </div>
@@ -391,8 +462,12 @@ export default function Codes() {
           {filteredAssemblies.length === 0 ? (
             <div className="text-center py-12">
               <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No assemblies found</h3>
-              <p className="text-gray-500">Try adjusting your search or filters, or add a new assembly.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No assemblies found
+              </h3>
+              <p className="text-gray-500">
+                Try adjusting your search or filters, or add a new assembly.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -406,7 +481,10 @@ export default function Codes() {
                       <input
                         value={editingAssembly.name}
                         onChange={(e) =>
-                          setEditingAssembly({ ...editingAssembly, name: e.target.value })
+                          setEditingAssembly({
+                            ...editingAssembly,
+                            name: e.target.value,
+                          })
                         }
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                         placeholder="Assembly name"
@@ -414,7 +492,10 @@ export default function Codes() {
                       <input
                         value={editingAssembly.code}
                         onChange={(e) =>
-                          setEditingAssembly({ ...editingAssembly, code: e.target.value })
+                          setEditingAssembly({
+                            ...editingAssembly,
+                            code: e.target.value,
+                          })
                         }
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                         placeholder="Code"
@@ -441,7 +522,11 @@ export default function Codes() {
                       <div className="flex gap-2">
                         <button
                           onClick={() =>
-                            setEditingAssembly({ oldCode: a.code, name: a.name, code: a.code })
+                            setEditingAssembly({
+                              oldCode: a.code,
+                              name: a.name,
+                              code: a.code,
+                            })
                           }
                           className="bg-yellow-500 text-white p-2 rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition duration-200"
                           title="Edit"

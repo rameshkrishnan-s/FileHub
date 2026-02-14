@@ -70,32 +70,34 @@ const SearchAndFilters = ({
         </select>
         
         <select
-          value={companyCodeFilter}
-          onChange={handleCompanyChange}
-          className="p-3 border border-gray-300 rounded-xl shadow-inner focus:ring-2 focus:ring-blue-300 transition-all"
-          disabled={isSearching}
-        >
-          <option value="">Filter by Company Code</option>
-          {companies.map((company) => (
-            <option key={company.code} value={company.code}>
-              {company.code} - {company.name}
-            </option>
-          ))}
-        </select>
+  value={companyCodeFilter ? `${companyCodeFilter} - ${companies.find(c => c.code === companyCodeFilter)?.name}` : ''}
+  onChange={handleCompanyChange}
+  className="p-3 border border-gray-300 rounded-xl shadow-inner focus:ring-2 focus:ring-blue-300 transition-all"
+  disabled={isSearching}
+>
+  <option value="">Filter by Company Code</option>
+  {companies.map((company) => (
+    <option key={company.code} value={company.code}>
+      {company.code} - {company.name}
+    </option>
+  ))}
+</select>
+
         
         <select
-          value={assemblyCodeFilter}
-          onChange={handleAssemblyChange}
-          className="p-3 border border-gray-300 rounded-xl shadow-inner focus:ring-2 focus:ring-blue-300 transition-all"
-          disabled={isSearching}
-        >
-          <option value="">Filter by Assembly Code</option>
-          {assemblyCodes.map((assembly) => (
-            <option key={assembly.code} value={assembly.code}>
-              {assembly.code} - {assembly.name}
-            </option>
-          ))}
-        </select>
+  value={assemblyCodeFilter ? `${assemblyCodeFilter} - ${assemblyCodes.find(a => a.code === assemblyCodeFilter)?.name}` : ''}
+  onChange={handleAssemblyChange}
+  className="p-3 border border-gray-300 rounded-xl shadow-inner focus:ring-2 focus:ring-blue-300 transition-all"
+  disabled={isSearching}
+>
+  <option value="">Filter by Assembly Code</option>
+  {assemblyCodes.map((assembly) => (
+    <option key={assembly.code} value={assembly.code}>
+      {assembly.code} - {assembly.name}
+    </option>
+  ))}
+</select>
+
       </div>
     </div>
   );
