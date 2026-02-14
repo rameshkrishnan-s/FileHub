@@ -12,35 +12,49 @@ export default function ViewerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Fetch user tasks/permissions first
+  // ===============================
+  // Fetch user permissions / tasks
+  // ===============================
   useEffect(() => {
-    const userId = sessionStorage.getItem("userId");
+    const userId = sessionStorage.getItem("userId"); // ✅ ONE KEY ONLY
     if (!userId) return;
 
     const fetchPermissions = async () => {
       try {
         const res = await axios.get(`/api/user/my-tasks/${userId}`);
-        setPermissions(res.data.permissions || []);
-        setUser(res.data.user || null);
+        setPermissions(res.data?.permissions || []);
+        setUser(res.data?.user || null);
       } catch (err) {
-        console.error(err);
+        console.error("Permission fetch error:", err);
       }
     };
 
     fetchPermissions();
   }, []);
 
-  // Fetch files/folders for the user from /list API
+  // ===============================
+  // Fetch files & folders
+  // ===============================
   useEffect(() => {
     const fetchFiles = async () => {
       try {
         const userId = sessionStorage.getItem("userId");
         const res = await axios.get("/api/user/list", {
-          params: { path: "", user_id: userId }, // send user_id to get only permitted files
+          params: { path: "", user_id: userId },
         });
-        setFilesData(res.data || []);
+
+        console.log("List API response:", res.data);
+
+        // ✅ FORCE array (prevents filter crash)
+        if (Array.isArray(res.data)) {
+          setFilesData(res.data);
+        } else if (Array.isArray(res.data?.files)) {
+          setFilesData(res.data.files);
+        } else {
+          setFilesData([]);
+        }
       } catch (err) {
-        console.error(err);
+        console.error("File fetch error:", err);
         setError(err.response?.data?.message || "Error fetching files");
       } finally {
         setLoading(false);
@@ -50,7 +64,9 @@ export default function ViewerDashboard() {
     fetchFiles();
   }, []);
 
-  // Helper to check if user has permission for a file/folder
+  // ===============================
+  // Permission check helper
+  // ===============================
   const hasPermission = (filePath) => {
     return permissions.some((p) =>
       filePath.startsWith(p.file_or_folder)
@@ -63,6 +79,9 @@ export default function ViewerDashboard() {
     { key: "messages", label: "Messages", icon: MessageSquare },
   ];
 
+  // ===============================
+  // Render file / folder card
+  // ===============================
   const renderItem = (item) => {
     const allowed = hasPermission(item.path);
     const Icon = item.type === "file" ? FileText : Folder;
@@ -93,6 +112,9 @@ export default function ViewerDashboard() {
     );
   };
 
+  // ===============================
+  // Main content renderer
+  // ===============================
   const renderContent = () => {
     if (activeTab === "messages") {
       return (
@@ -119,7 +141,8 @@ export default function ViewerDashboard() {
 
     if (loading) return <p>Loading files...</p>;
     if (error) return <p className="text-red-500">{error}</p>;
-    if (!filesData.length) return <p>No files or folders available.</p>;
+    if (!Array.isArray(filesData) || filesData.length === 0)
+      return <p>No files or folders available.</p>;
 
     const files = filesData.filter((f) => f.type === "file");
     const folders = filesData.filter((f) => f.type === "folder");
@@ -149,37 +172,40 @@ export default function ViewerDashboard() {
     return null;
   };
 
+  // ===============================
+  // Layout
+  // ===============================
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="flex mt-[0px]">
+      <div className="flex">
         <div className="w-64 bg-white shadow-lg min-h-[calc(100vh-90px)]">
           <div className="flex items-center justify-center h-16 bg-blue-600">
             <h1 className="text-white text-xl font-bold">Viewer Panel</h1>
           </div>
-          <nav className="mt-4">
-            <div className="px-4 space-y-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.key}
-                    onClick={() => setActiveTab(item.key)}
-                    className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-all duration-200 ${
-                      activeTab === item.key
-                        ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600"
-                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                    }`}
-                  >
-                    <Icon className="h-5 w-5 mr-3 text-blue-600" />
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+
+          <nav className="mt-4 px-4 space-y-2">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => setActiveTab(item.key)}
+                  className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition ${
+                    activeTab === item.key
+                      ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  }`}
+                >
+                  <Icon className="h-5 w-5 mr-3 text-blue-600" />
+                  <span className="font-medium">{item.label}</span>
+                </button>
+              );
+            })}
           </nav>
         </div>
-        <div className="flex-1 p-8 bg-gray-50">{renderContent()}</div>
+
+        <div className="flex-1 p-8">{renderContent()}</div>
       </div>
     </div>
   );

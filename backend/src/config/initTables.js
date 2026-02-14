@@ -38,9 +38,24 @@ async function initTables() {
         password VARCHAR(255) NOT NULL,
         role_id INT NOT NULL,
         position VARCHAR(100),
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
       )
     `);
+
+    // ⭐ Fix existing users table if timestamps were wrong
+    await connection.execute(`
+      ALTER TABLE users
+      MODIFY createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    `).catch(() => {});
+
+    await connection.execute(`
+      ALTER TABLE users
+      MODIFY updatedAt DATETIME NOT NULL
+      DEFAULT CURRENT_TIMESTAMP
+      ON UPDATE CURRENT_TIMESTAMP
+    `).catch(() => {});
 
     // ================= COMPANIES TABLE =================
     await connection.execute(`
@@ -66,11 +81,14 @@ async function initTables() {
         id INT AUTO_INCREMENT PRIMARY KEY,
         fileName VARCHAR(255) NOT NULL,
         filePath VARCHAR(255) NOT NULL,
+        sequence INT NOT NULL,
+         yearCode VARCHAR(2) NOT NULL,
         createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         type ENUM('file','folder') DEFAULT 'file',
         fileId INT,
-        INDEX(fileId)
+        INDEX(fileId),
+        UNIQUE(yearCode, sequence)
       )
     `);
 

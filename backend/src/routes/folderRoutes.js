@@ -1,5 +1,7 @@
 const express = require("express");
 const fs = require("fs");
+const fsPromises = require("fs").promises;
+
 const path = require("path");
 const multer = require("multer");
 const pool = require("../db/db");
@@ -160,106 +162,84 @@ router.get("/list", authMiddleware, async (req, res) => {
 
 
 // Create folder
-// router.post("/create-folder", async (req, res) => {
-//   const { folderName, path: currentPath } = req.body;
-//   if (!folderName) {
-//     return res.status(400).json({ message: "Folder name is required!" });
-//   }
-
-//   const basePath = path.join(STORAGE_PATH, currentPath || "");
-
-//   const getNextAvailableFolderName = (baseName, basePath) => {
-//     let counter = 1;
-//     let newName = baseName;
-//     while (fs.existsSync(path.join(basePath, newName))) {
-//       newName = `${baseName}-${counter++}`;
-//     }
-//     return newName;
-//   };
-
-//   const finalFolderName = getNextAvailableFolderName(folderName, basePath);
-//   const fullPath = path.join(basePath, finalFolderName);
-//   folder_path = currentPath || "";
-
-//   try {
-//     fs.mkdirSync(fullPath, { recursive: true });
-
-//     // Also create subfolders if it's at the root level
-//     if (!currentPath) {
-//       fs.mkdirSync(path.join(fullPath, "2D-Drawing"));
-//       fs.mkdirSync(path.join(fullPath, "3D-Model"));
-//     }
-
-//     // ✅ Store in metadata DB
-//     await db.Metadata.create({
-//       fileName: finalFolderName,
-//       filePath: path.join(currentPath || "", finalFolderName),
-//       type: "folder"
-//     });
-
-//     res.json({ message: "Folder created successfully!", folderName: finalFolderName });
-//   } catch (error) {
-//     res.status(500).json({ message: "Error creating folder.", error: error.toString() });
-//   }
-// });
-
 router.post("/create-folder", authMiddleware, async (req, res) => {
-  const { folderName, path: currentPath, subFolderCount } = req.body;
+  const { folderName, path: currentPath = "" } = req.body;
 
-  if (!folderName) {
+  if (!folderName || folderName.trim() === "") {
     return res.status(400).json({ message: "Folder name is required!" });
   }
 
-  const basePath = path.join(STORAGE_PATH, currentPath || "");
-
-  // Function to ensure unique folder name
-  const getNextAvailableFolderName = (baseName, basePath) => {
-    let counter = 1;
-    let newName = baseName;
-    while (fs.existsSync(path.join(basePath, newName))) {
-      newName = `${baseName}-${counter++}`;
-    }
-    return newName;
-  };
-
-  const finalFolderName = getNextAvailableFolderName(folderName, basePath);
-  const fullPath = path.join(basePath, finalFolderName);
-
   try {
-    // Create parent folder
-    fs.mkdirSync(fullPath, { recursive: true });
+    const safePath = path.normalize(currentPath).replace(/^(\.\.(\/|\\|$))+/, "");
+    const basePath = path.join(STORAGE_PATH, safePath);
 
-    // Create user-defined subfolders
-    if (subFolderCount && Number(subFolderCount) > 0) {
-      for (let i = 1; i <= subFolderCount; i++) {
-        const subFolderName = `${finalFolderName}-${i}`;
-        fs.mkdirSync(path.join(fullPath, subFolderName));
-      }
+    // await fs.mkdir(basePath, { recursive: true });
+    await fsPromises.mkdir(basePath, { recursive: true });
+
+
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      const now = new Date();
+      const currentYear = new Date().getFullYear().toString().slice(-2); // "25"
+
+      // 🔥 Get next running number from DB
+      const [rows] = await connection.execute(
+        `SELECT MAX(sequence) as lastSeq FROM metadata 
+         WHERE YEAR(createdAt) = YEAR(CURDATE())`
+      );
+
+      let nextSeq = (rows[0].lastSeq || 0) + 1;
+
+      // Format as 3 digit
+      const formattedSeq = String(nextSeq).padStart(3, "0");
+
+      // Final Display Name
+      const finalFolderName = `${currentYear} ${formattedSeq} ${folderName}`;
+
+      const fullPath = path.join(basePath, finalFolderName);
+
+      await fsPromises.mkdir(fullPath);
+
+
+      await connection.execute(
+        `INSERT INTO metadata 
+         (fileName, filePath, type, createdAt, updatedAt, sequence) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          finalFolderName,
+          path.join(safePath, finalFolderName),
+          "folder",
+          now,
+          now,
+          nextSeq
+        ]
+      );
+
+      await connection.commit();
+      connection.release();
+
+      res.status(201).json({
+        message: "Folder created successfully!",
+        folderName: finalFolderName
+      });
+
+    } catch (err) {
+      await connection.rollback();
+      connection.release();
+      throw err;
     }
 
-    // Store parent folder in metadata DB
-    const now = new Date();
-    await pool.execute(
-      "INSERT INTO metadata (fileName, filePath, type, createdAt, updatedAt, fileId) VALUES (?, ?, ?, ?, ?, ?)",
-      [finalFolderName, path.join(currentPath || "", finalFolderName), "folder", now, now, null]
-    );
-
-    // Optionally store subfolders in DB as well
-    if (subFolderCount && Number(subFolderCount) > 0) {
-      for (let i = 1; i <= subFolderCount; i++) {
-        const subFolderName = `${finalFolderName}-${i}`;
-        await pool.execute(
-          "INSERT INTO metadata (fileName, filePath, type, createdAt, updatedAt, fileId) VALUES (?, ?, ?, ?, ?, ?)",
-          [subFolderName, path.join(currentPath || "", finalFolderName, subFolderName), "folder", now, now, null]
-        );
-      }
-    }
-
-    res.json({ message: "Folder created successfully!", folderName: finalFolderName });
   } catch (error) {
-    res.status(500).json({ message: "Error creating folder.", error: error.toString() });
+    console.error(error);
+    res.status(500).json({
+      message: "Error creating folder.",
+      error: error.message
+    });
   }
 });
+
 
 
 
@@ -363,20 +343,130 @@ router.post(
 
 
 // ✅ Search function with caching, pagination, and folder scope
+// const searchCache = new NodeCache({ stdTTL: 300 });
+
+// router.get("/search", async (req, res) => {
+//   const { query, type, path: currentPath = "", page = 1, limit = 20 } = req.query;
+//   const cacheKey = `${query}-${type}-${currentPath}-${page}-${limit}`;
+
+//   try {
+//     // ✅ Check cache first
+//     const cachedResults = searchCache.get(cacheKey);
+//     if (cachedResults) {
+//       return res.json(cachedResults);
+//     }
+
+//     // ✅ Build search conditions
+//     let whereConditions = [];
+//     let queryParams = [];
+
+//     if (currentPath) {
+//       whereConditions.push("filePath LIKE ?");
+//       queryParams.push(`${currentPath}%`);
+//     }
+
+//     if (query) {
+//       whereConditions.push("(fileName LIKE ? OR filePath LIKE ?)");
+//       queryParams.push(`%${query}%`, `%${query}%`);
+//     }
+
+//     if (type) {
+//       whereConditions.push("type = ?");
+//       queryParams.push(type);
+//     }
+
+//     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+//     // ✅ Get total count
+//     const [countResult] = await pool.execute(
+//       `SELECT COUNT(*) as total FROM metadata ${whereClause}`,
+//       queryParams
+//     );
+//     const totalCount = countResult[0].total;
+
+//     // ✅ Get filtered + paginated results
+//     const [results] = await pool.execute(
+//       `SELECT * FROM metadata ${whereClause} ORDER BY createdAt DESC LIMIT ? OFFSET ?`,
+//       [...queryParams, parseInt(limit), (parseInt(page) - 1) * parseInt(limit)]
+//     );
+
+//     // ✅ Format results
+//     const formattedResults = await Promise.all(
+//       results.map(async (metadata) => {
+//         const fullPath = path.join(STORAGE_PATH, metadata.filePath);
+//         let stats = null;
+
+//         try {
+//           stats = await fs.promises.stat(fullPath);
+//         } catch {}
+
+//         return {
+//           id: metadata.id,
+//           name: metadata.fileName,
+//           type: metadata.type || (stats?.isDirectory() ? "folder" : "file"),
+//           path: metadata.filePath,
+//           createdAt: stats ? stats.birthtime : metadata.createdAt,
+//           ...metadata,
+//         };
+//       })
+//     );
+
+//     const response = {
+//       results: formattedResults,
+//       pagination: {
+//         total: totalCount,
+//         page: parseInt(page),
+//         limit: parseInt(limit),
+//         totalPages: Math.ceil(totalCount / limit),
+//       },
+//     };
+
+//     // ✅ Cache
+//     searchCache.set(cacheKey, response);
+
+//     res.json(response);
+//   } catch (error) {
+//     console.error("Search error:", error);
+//     res.status(500).json({
+//       message: "Error searching files/folders.",
+//       error: error.toString(),
+//       details: error.message,
+//     });
+//   }
+// });
+
+// ✅ Search function with caching, pagination, and folder scope
+// ✅ Search function with caching, pagination, and folder scope
 const searchCache = new NodeCache({ stdTTL: 300 });
 
-router.get("/search", async (req, res) => {
-  const { query, type, path: currentPath = "", page = 1, limit = 20 } = req.query;
-  const cacheKey = `${query}-${type}-${currentPath}-${page}-${limit}`;
-
+router.get("/search", authMiddleware, async (req, res) => {
   try {
-    // ✅ Check cache first
+    const {
+      query,
+      type,
+      path: currentPath = "",
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    // ✅ Safe pagination parsing
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.max(parseInt(limit, 10) || 20, 1);
+    const offset = (pageNum - 1) * limitNum;
+
+    if (isNaN(pageNum) || isNaN(limitNum)) {
+      return res.status(400).json({ message: "Invalid pagination values" });
+    }
+
+    const cacheKey = `${query || ""}-${type || ""}-${currentPath}-${pageNum}-${limitNum}`;
+
+    // ✅ Check cache
     const cachedResults = searchCache.get(cacheKey);
     if (cachedResults) {
       return res.json(cachedResults);
     }
 
-    // ✅ Build search conditions
+    // ✅ Build WHERE conditions dynamically
     let whereConditions = [];
     let queryParams = [];
 
@@ -395,20 +485,28 @@ router.get("/search", async (req, res) => {
       queryParams.push(type);
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(" AND ")}`
+        : "";
 
-    // ✅ Get total count
-    const [countResult] = await pool.execute(
-      `SELECT COUNT(*) as total FROM metadata ${whereClause}`,
-      queryParams
-    );
+    // ✅ Count query (safe prepared statement)
+    const countSql = `SELECT COUNT(*) as total FROM metadata ${whereClause}`;
+    const [countResult] = await pool.execute(countSql, queryParams);
     const totalCount = countResult[0].total;
 
-    // ✅ Get filtered + paginated results
-    const [results] = await pool.execute(
-      `SELECT * FROM metadata ${whereClause} ORDER BY createdAt DESC LIMIT ? OFFSET ?`,
-      [...queryParams, parseInt(limit), (parseInt(page) - 1) * parseInt(limit)]
-    );
+    // ✅ MAIN QUERY (NO placeholders for LIMIT/OFFSET)
+    const searchSql = `
+      SELECT * FROM metadata
+      ${whereClause}
+      ORDER BY createdAt DESC
+      LIMIT ${limitNum} OFFSET ${offset}
+    `;
+
+    console.log("SQL:", searchSql);
+    console.log("Params:", queryParams);
+
+    const [results] = await pool.query(searchSql, queryParams);
 
     // ✅ Format results
     const formattedResults = await Promise.all(
@@ -425,7 +523,7 @@ router.get("/search", async (req, res) => {
           name: metadata.fileName,
           type: metadata.type || (stats?.isDirectory() ? "folder" : "file"),
           path: metadata.filePath,
-          createdAt: stats ? stats.birthtime : metadata.createdAt,
+          createdAt: stats?.birthtime || metadata.createdAt,
           ...metadata,
         };
       })
@@ -435,25 +533,26 @@ router.get("/search", async (req, res) => {
       results: formattedResults,
       pagination: {
         total: totalCount,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(totalCount / limit),
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(totalCount / limitNum),
       },
     };
 
-    // ✅ Cache
+    // ✅ Cache response
     searchCache.set(cacheKey, response);
 
     res.json(response);
+
   } catch (error) {
     console.error("Search error:", error);
     res.status(500).json({
       message: "Error searching files/folders.",
       error: error.toString(),
-      details: error.message,
     });
   }
 });
+
 
 
 // Open file

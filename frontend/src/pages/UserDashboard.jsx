@@ -41,6 +41,7 @@ export default function UserDashboard() {
           : `/api/user/my-tasks/${userId}`;
         const res = await API.get(url);
         setTasks(res.data.tasks);
+        console.log("Fetched tasks:", res.data.tasks);
       } catch (err) {
         console.error(err);
       }

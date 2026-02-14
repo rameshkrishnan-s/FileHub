@@ -386,7 +386,19 @@ router.get("/my-tasks/:user_id", async (req, res) => {
     }
 
     // ✅ Get tasks for this user with status filter
-    let taskQuery = "SELECT id, task, file_or_folder_name, message, status, created_at FROM tasks WHERE user_id = ?";
+    let taskQuery = `SELECT 
+  t.id,
+  t.task,
+  t.file_or_folder_name,
+  t.message,
+  t.status,
+  uf.createdAt AS file_created_at
+FROM tasks t
+LEFT JOIN user_files uf
+  ON t.user_id = uf.user_id
+  AND t.file_or_folder_name = uf.file_or_folder
+WHERE t.user_id = ?;
+`;
     let taskParams = [user_id];
     
     if (status) {
