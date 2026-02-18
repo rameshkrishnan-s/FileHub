@@ -54,10 +54,6 @@ const FolderCreationModal = ({ isOpen, onClose, onCreate, currentPath = "" }) =>
 
       // Reset form after success
       setCustomName("");
-      setCompanyCode("");
-      setYear("");
-      setAssemblyCode("");
-      setSubFolderCount(0);
       onClose();
     } catch (err) {
       console.error("Error creating folder:", err);
@@ -87,54 +83,6 @@ const FolderCreationModal = ({ isOpen, onClose, onCreate, currentPath = "" }) =>
               value={customName}
               onChange={(e) => setCustomName(e.target.value)}
               className="w-full p-3 mb-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
-            />
-
-            <select
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              className="w-full p-3 mb-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
-            >
-              <option value="">Select Year</option>
-              {years.map((yearOption) => (
-                <option key={yearOption} value={yearOption}>
-                  {yearOption}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={companyCode}
-              onChange={(e) => setCompanyCode(e.target.value)}
-              className="w-full p-3 mb-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
-            >
-              <option value="">Select Company Code</option>
-              {companies.map((company) => (
-                <option key={company.code} value={company.code}>
-                  {company.code} - {company.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={assemblyCode}
-              onChange={(e) => setAssemblyCode(e.target.value)}
-              className="w-full p-3 mb-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
-            >
-              <option value="">Select Assembly Code</option>
-              {assemblyCodes.map((assembly) => (
-                <option key={assembly.code} value={assembly.code}>
-                  {assembly.code} - {assembly.name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              type="number"
-              min="0"
-              placeholder="Number of Subfolders"
-              value={subFolderCount}
-              onChange={(e) => setSubFolderCount(e.target.value)}
-              className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
             />
           </>
         )}
