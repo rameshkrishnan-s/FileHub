@@ -11,6 +11,7 @@ const FolderCreationModal = ({ isOpen, onClose, onCreate, currentPath = "" }) =>
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
 
+
   const token = sessionStorage.getItem("token");
 
   useEffect(() => {
@@ -50,7 +51,7 @@ const FolderCreationModal = ({ isOpen, onClose, onCreate, currentPath = "" }) =>
 
     setLoading(true);
     try {
-      await onCreate(finalFolderName, Number(subFolderCount) || 0);
+      await onCreate(finalFolderName, Number(subFolderCount) || 0, year);
 
       // Reset form after success
       setCustomName("");

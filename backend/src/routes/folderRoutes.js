@@ -161,7 +161,167 @@ router.get("/list", authMiddleware, async (req, res) => {
 });
 
 
-// Create folder
+// // Create folder
+// router.post("/create-folder", authMiddleware, async (req, res) => {
+//   const { folderName, path: currentPath = "" } = req.body;
+
+//   if (!folderName || folderName.trim() === "") {
+//     return res.status(400).json({ message: "Folder name is required!" });
+//   }
+
+//   try {
+//     const safePath = path.normalize(currentPath).replace(/^(\.\.(\/|\\|$))+/, "");
+//     const basePath = path.join(STORAGE_PATH, safePath);
+
+//     // await fs.mkdir(basePath, { recursive: true });
+//     await fsPromises.mkdir(basePath, { recursive: true });
+
+
+//     const connection = await pool.getConnection();
+//     await connection.beginTransaction();
+
+//     try {
+//       const now = new Date();
+//       const currentYear = new Date().getFullYear().toString().slice(-2); // "25"
+
+//       // 🔥 Get next running number from DB
+//       const [rows] = await connection.execute(
+//         `SELECT MAX(sequence) as lastSeq FROM metadata 
+//          WHERE YEAR(createdAt) = YEAR(CURDATE())`
+//       );
+
+//       let nextSeq = (rows[0].lastSeq || 0) + 1;
+
+//       // Format as 3 digit
+//       const formattedSeq = String(nextSeq).padStart(3, "0");
+
+//       // Final Display Name
+//       const finalFolderName = `${currentYear} ${formattedSeq} ${folderName}`;
+
+//       const fullPath = path.join(basePath, finalFolderName);
+
+//       await fsPromises.mkdir(fullPath);
+
+
+//       await connection.execute(
+//         `INSERT INTO metadata 
+//          (fileName, filePath, type, createdAt, updatedAt, sequence) 
+//          VALUES (?, ?, ?, ?, ?, ?)`,
+//         [
+//           finalFolderName,
+//           path.join(safePath, finalFolderName),
+//           "folder",
+//           now,
+//           now,
+//           nextSeq
+//         ]
+//       );
+
+//       await connection.commit();
+//       connection.release();
+
+//       res.status(201).json({
+//         message: "Folder created successfully!",
+//         folderName: finalFolderName
+//       });
+
+//     } catch (err) {
+//       await connection.rollback();
+//       connection.release();
+//       throw err;
+//     }
+
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({
+//       message: "Error creating folder.",
+//       error: error.message
+//     });
+//   }
+// });
+
+// // ✅ Create Sub Folder with ParentName + Running Number + Custom Name
+// router.post("/create-subfolder", authMiddleware, async (req, res) => {
+//   const { parentPath = "", customName } = req.body;
+
+//   if (!customName || customName.trim() === "") {
+//     return res.status(400).json({ message: "Custom name is required!" });
+//   }
+
+//   const connection = await pool.getConnection();
+//   await connection.beginTransaction();
+
+//   try {
+//     const safeParentPath = path.normalize(parentPath).replace(/^(\.\.(\/|\\|$))+/, "");
+//     const fullParentPath = path.join(STORAGE_PATH, safeParentPath);
+
+//     if (!fs.existsSync(fullParentPath)) {
+//       await connection.rollback();
+//       connection.release();
+//       return res.status(404).json({ message: "Parent folder does not exist!" });
+//     }
+
+//     const parentFolderName = path.basename(fullParentPath);
+
+//     // 🔥 Get max sequence for this parent (LOCK rows)
+//     const [rows] = await connection.execute(
+//       `SELECT MAX(sequence) as lastSeq 
+//        FROM metadata 
+//        WHERE filePath LIKE ? 
+//        AND type = 'folder'
+//        FOR UPDATE`,
+//       [`${safeParentPath}/%`]
+//     );
+
+//     let nextSeq = (rows[0].lastSeq || 0) + 1;
+//     const formattedNumber = String(nextSeq).padStart(3, "0");
+
+//     const finalFolderName = `${parentFolderName}-${formattedNumber}-${customName}`;
+//     const newFolderRelativePath = path.join(safeParentPath, finalFolderName);
+//     const newFolderFullPath = path.join(STORAGE_PATH, newFolderRelativePath);
+
+//     await fsPromises.mkdir(newFolderFullPath);
+
+//     const now = new Date();
+
+//     await connection.execute(
+//       `INSERT INTO metadata 
+//        (fileName, filePath, type, createdAt, updatedAt, sequence) 
+//        VALUES (?, ?, ?, ?, ?, ?)`,
+//       [
+//         finalFolderName,
+//         newFolderRelativePath.replace(/\\/g, '/'),
+//         "folder",
+//         now,
+//         now,
+//         nextSeq
+//       ]
+//     );
+
+//     await connection.commit();
+//     connection.release();
+
+//     res.status(201).json({
+//       message: "Subfolder created successfully!",
+//       folderName: finalFolderName
+//     });
+
+//   } catch (error) {
+//     await connection.rollback();
+//     connection.release();
+
+//     res.status(500).json({
+//       message: "Error creating subfolder.",
+//       error: error.message
+//     });
+//   }
+// });
+
+
+
+// ===============================
+// ✅ CREATE MAIN FOLDER
+// ===============================
 router.post("/create-folder", authMiddleware, async (req, res) => {
   const { folderName, path: currentPath = "" } = req.body;
 
@@ -173,47 +333,47 @@ router.post("/create-folder", authMiddleware, async (req, res) => {
     const safePath = path.normalize(currentPath).replace(/^(\.\.(\/|\\|$))+/, "");
     const basePath = path.join(STORAGE_PATH, safePath);
 
-    // await fs.mkdir(basePath, { recursive: true });
     await fsPromises.mkdir(basePath, { recursive: true });
-
 
     const connection = await pool.getConnection();
     await connection.beginTransaction();
 
     try {
       const now = new Date();
-      const currentYear = new Date().getFullYear().toString().slice(-2); // "25"
 
-      // 🔥 Get next running number from DB
+      // Get current year (last 2 digits)
+      const currentYear = new Date().getFullYear().toString().slice(-2);
+
+      // 🔥 Get next running sequence for current year
       const [rows] = await connection.execute(
-        `SELECT MAX(sequence) as lastSeq FROM metadata 
-         WHERE YEAR(createdAt) = YEAR(CURDATE())`
+        `SELECT MAX(sequence) as lastSeq 
+         FROM metadata 
+         WHERE yearCode = ?`,
+        [currentYear]
       );
 
       let nextSeq = (rows[0].lastSeq || 0) + 1;
-
-      // Format as 3 digit
       const formattedSeq = String(nextSeq).padStart(3, "0");
 
-      // Final Display Name
+      // Final folder display name
       const finalFolderName = `${currentYear} ${formattedSeq} ${folderName}`;
-
       const fullPath = path.join(basePath, finalFolderName);
 
       await fsPromises.mkdir(fullPath);
 
-
+      // 🔥 INSERT with yearCode
       await connection.execute(
         `INSERT INTO metadata 
-         (fileName, filePath, type, createdAt, updatedAt, sequence) 
-         VALUES (?, ?, ?, ?, ?, ?)`,
+         (fileName, filePath, type, createdAt, updatedAt, sequence, yearCode) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           finalFolderName,
-          path.join(safePath, finalFolderName),
+          path.join(safePath, finalFolderName).replace(/\\/g, "/"),
           "folder",
           now,
           now,
-          nextSeq
+          nextSeq,
+          currentYear
         ]
       );
 
@@ -240,7 +400,10 @@ router.post("/create-folder", authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ Create Sub Folder with ParentName + Running Number + Custom Name
+
+// ===============================
+// ✅ CREATE SUBFOLDER
+// ===============================
 router.post("/create-subfolder", authMiddleware, async (req, res) => {
   const { parentPath = "", customName } = req.body;
 
@@ -263,7 +426,10 @@ router.post("/create-subfolder", authMiddleware, async (req, res) => {
 
     const parentFolderName = path.basename(fullParentPath);
 
-    // 🔥 Get max sequence for this parent (LOCK rows)
+    // 🔥 Extract yearCode from parent folder (first 2 characters)
+    const yearCode = parentFolderName.split(" ")[0];
+
+    // 🔥 Lock rows and get next sequence under this parent
     const [rows] = await connection.execute(
       `SELECT MAX(sequence) as lastSeq 
        FROM metadata 
@@ -284,17 +450,19 @@ router.post("/create-subfolder", authMiddleware, async (req, res) => {
 
     const now = new Date();
 
+    // 🔥 INSERT with yearCode
     await connection.execute(
       `INSERT INTO metadata 
-       (fileName, filePath, type, createdAt, updatedAt, sequence) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       (fileName, filePath, type, createdAt, updatedAt, sequence, yearCode) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         finalFolderName,
-        newFolderRelativePath.replace(/\\/g, '/'),
+        newFolderRelativePath.replace(/\\/g, "/"),
         "folder",
         now,
         now,
-        nextSeq
+        nextSeq,
+        yearCode
       ]
     );
 
@@ -316,8 +484,6 @@ router.post("/create-subfolder", authMiddleware, async (req, res) => {
     });
   }
 });
-
-
 
 
 // Rename folder/file
