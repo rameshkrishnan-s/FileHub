@@ -115,7 +115,7 @@ export default function Folders() {
             onClick={() => setIsModalOpen(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all"
           >
-            + Add Folder
+            + Add kk Folder
           </button>
 
           <label className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-all cursor-pointer">

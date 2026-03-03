@@ -8,7 +8,7 @@ const ActionButtons = ({ setIsModalOpen, uploadFile }) => {
         onClick={() => setIsModalOpen(true)}
         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl shadow-md transition-all"
       >
-        <PlusCircle size={16} /> Add Folder
+        <PlusCircle size={16} /> Add  Folder
       </button>
       <label
         htmlFor="file-upload"
